@@ -12,9 +12,14 @@ this repository. Downloads are on the [InterCom releases page](https://github.co
 What differs from upstream Element X Android:
 
 - Own name, icon and application id (`com.c4g7.intercom.android`): installs next to Element X, shares no data with it.
-- Calls use the native MatrixRTC stack ([element-call-android](https://github.com/element-hq/element-call-android))
-  by default instead of the Element Call WebView, with **screen sharing** enabled (the WebView cannot share the screen).
-  It can be switched back in the developer options ("Native calls").
+- Calls use the native MatrixRTC stack by default instead of the Element Call WebView, with **screen sharing** enabled
+  (the WebView cannot share the screen). It can be switched back in the developer options ("Native calls").
+  The stack is InterCom's fork of element-call-android,
+  [intercom-element-call-android](https://github.com/c4g7-dev/intercom-element-call-android), which adds:
+  - the **phone's audio** in a screen share ("Share phone audio" in the sheet the share button opens, on by default;
+    Android 10 or newer; apps that forbid capture, and calls, are silent in it);
+  - screen shares at the screen's **own resolution up to 1440p**, 30 or 15 fps, one layer, up to 10 Mbit/s;
+  - an **equal grid** layout (call settings → Preferences → Layout): every tile the same size, shared screens shown whole.
 - OAuth client metadata for Matrix Authentication Service: redirect scheme `com.c4g7.intercom.android:/` with
   client URI `https://c4g7.com` (MAS requires the scheme to be the reversed host of the client URI).
   Change both in `plugins/src/main/kotlin/config/BuildTimeConfig.kt` when building for another domain.
@@ -26,15 +31,24 @@ What differs from upstream Element X Android:
 
 Known limitations:
 
-- Screen shares are sent at up to 1280 px on the long edge and 15 fps. This preset is fixed inside
-  element-call-android 0.1.2, which exposes no option for it; the same holds for sharing the phone's audio.
+- The phone's audio in a screen share is sent with the RTC core's default audio settings (Opus at up to 48 kbit/s):
+  music quality at a higher bitrate needs a change in the Rust core (matrix-rust-rtc), which is used as released.
+- A screen share shared by someone else is shown, but its audio is not played on the phone yet.
+- Encoding a 1440p or 1080p share at 30 fps is heavy for a phone: choose a lower resolution or 15 fps in the share
+  sheet if the phone gets hot or the picture stutters.
 - Maps need a MapTiler key, none is bundled.
 
-Build (JDK 21, Android SDK 37):
+Build (JDK 21, Android SDK 37). The call library fork is not on Maven Central, so it is published to the local
+Maven repository (`~/.m2`) first; `gradle/libs.versions.toml` (`element_call`) names the version expected there:
 
 ```sh
+git clone -b intercom https://github.com/c4g7-dev/intercom-element-call-android.git
+(cd intercom-element-call-android && ./gradlew publishToMavenLocal)
 ./gradlew :app:assembleFdroidRelease
 ```
+
+In the [InterCom](https://github.com/c4g7-dev/InterCom) repository both are submodules, `element-call-android` and
+`element-x-android`.
 
 The release build is signed with the key given by the environment variables `INTERCOM_ANDROID_STOREFILE`,
 `INTERCOM_ANDROID_STOREPASSWORD`, `INTERCOM_ANDROID_KEYALIAS` and `INTERCOM_ANDROID_KEYPASSWORD`, and with the

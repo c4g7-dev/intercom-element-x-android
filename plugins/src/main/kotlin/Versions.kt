@@ -55,7 +55,14 @@ object Versions {
      * See comment above for the calculation method.
      */
     const val VERSION_CODE = (2000 + versionYear) * 10_000 + versionMonth * 100 + versionReleaseNumber
-    val VERSION_NAME = "$versionYear.${versionMonth.toString().padStart(2, '0')}.$versionReleaseNumber"
+
+    /**
+     * InterCom: the revision of the fork on top of the upstream version, in [0,9]. It ends the version name
+     * (`26.11.1-intercom.2`) and is the last digit of the version code, after the ABI digit, so that every
+     * revision installs over the one before it. Back to 1 with each new upstream version.
+     */
+    const val INTERCOM_REVISION = 2
+    val VERSION_NAME = "$versionYear.${versionMonth.toString().padStart(2, '0')}.$versionReleaseNumber-intercom.$INTERCOM_REVISION"
 
     /**
      * Compile SDK version. Must be updated when a new Android version is released.

@@ -69,12 +69,11 @@ dependencyResolutionManagement {
             }
         }
 
-        // Testing an unreleased element-call-android build. Publish it there with
-        // `publishToMavenLocal -PVERSION_NAME=0.1.0-local`, then build here with
-        // `-PelementCallLocalVersion=0.1.0-local`. Absent without the property, so that everything
-        // resolves for a contributor who has never built the library.
-        providers.gradleProperty("elementCallLocalVersion").orNull?.let { elementCallVersion ->
-            logger.lifecycle("Note: resolving io.element.android:element-call-* $elementCallVersion from mavenLocal")
+        // InterCom: element-call-android is the fork c4g7-dev/intercom-element-call-android, which is not on
+        // Maven Central. Publish it from its checkout with `./gradlew publishToMavenLocal` (the version in
+        // gradle/libs.versions.toml), or another build with `publishToMavenLocal -PVERSION_NAME=0.1.0-local`
+        // and `-PelementCallLocalVersion=0.1.0-local` here. Only these five modules are looked up there.
+        run {
             mavenLocal {
                 content {
                     // Per module: compound-android and element-call-embedded stay on Maven Central.

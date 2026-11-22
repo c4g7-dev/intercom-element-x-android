@@ -280,7 +280,8 @@ androidComponents {
             val abiCode = abiVersionCodes[name] ?: 0
             // Assigns the new version code to output.versionCode, which changes the version code
             // for only the output APK, not for the variant itself.
-            output.versionCode.set((output.versionCode.orNull ?: 0) * 10 + abiCode)
+            // InterCom: one more digit, the fork's revision (see Versions.INTERCOM_REVISION).
+            output.versionCode.set(((output.versionCode.orNull ?: 0) * 10 + abiCode) * 10 + Versions.INTERCOM_REVISION)
         }
     }
 
