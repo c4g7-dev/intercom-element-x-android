@@ -25,7 +25,8 @@ android {
             value = if (isEnterpriseBuild) {
                 BuildTimeConfig.URL_POLICY ?: ""
             } else {
-                "https://element.io/cookie-policy"
+                // InterCom: no analytics, so no policy to link to.
+                ""
             },
         )
         buildConfigFieldStr(
@@ -33,7 +34,8 @@ android {
             value = if (isEnterpriseBuild) {
                 BuildTimeConfig.BUG_REPORT_URL ?: ""
             } else {
-                "https://rageshakes.element.io/api/submit"
+                // InterCom: bug reports are not sent to Element's rageshake server.
+                ""
             },
         )
         buildConfigFieldStr(
@@ -41,7 +43,7 @@ android {
             value = if (isEnterpriseBuild) {
                 BuildTimeConfig.BUG_REPORT_APP_NAME ?: ""
             } else {
-                "element-x-android"
+                "intercom-android"
             },
         )
     }

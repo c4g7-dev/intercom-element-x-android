@@ -32,6 +32,18 @@ fun AboutView(
         onBackClick = onBackClick,
         title = stringResource(id = CommonStrings.common_about)
     ) {
+        // InterCom: attribution required by the Element trademark policy, not translated on purpose.
+        ListItem(
+            content = {
+                Text("InterCom – based on Element X")
+            },
+            supportingContent = {
+                Text(
+                    "An independent fork, not affiliated with or endorsed by Element. " +
+                        "Free software under the AGPL-3.0 licence, source code: github.com/c4g7-dev/InterCom"
+                )
+            },
+        )
         state.elementLegals.forEach { elementLegal ->
             ListItem(
                 content = {

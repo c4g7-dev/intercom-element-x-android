@@ -159,6 +159,8 @@ class DefaultElementCallControllers(
             // The call screen itself, which shows over the lock screen, rather than the launcher Activity.
             contentIntent = ElementCallActivity::pendingIntent,
         ),
+        // InterCom: goes with the `mediaProjection` foreground service type merged in the app manifest.
+        isScreenSharingEnabled = true,
     )
 
     /**

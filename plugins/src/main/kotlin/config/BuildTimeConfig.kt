@@ -9,12 +9,13 @@
 package config
 
 object BuildTimeConfig {
-    const val APPLICATION_ID = "io.element.android.x"
-    const val APPLICATION_NAME = "Element X"
-    val METADATA_HOST_REVERSED: String? = null
-    val OAUTH_CLIENT_URL_PATH: String? = "apps/android"
-    val URL_WEBSITE: String? = null
-    val URL_LOGO: String? = null
+    const val APPLICATION_ID = "com.c4g7.intercom.android"
+    const val APPLICATION_NAME = "InterCom"
+    // InterCom: MAS requires the custom redirect scheme to be the reversed host of URL_WEBSITE (client_uri).
+    val METADATA_HOST_REVERSED: String? = "com.c4g7.intercom.android"
+    val OAUTH_CLIENT_URL_PATH: String? = null
+    val URL_WEBSITE: String? = "https://c4g7.com"
+    val URL_LOGO: String? = "https://c4g7.com/favicon.ico"
     val URL_COPYRIGHT: String? = null
     val URL_ACCEPTABLE_USE: String? = null
     val URL_PRIVACY: String? = null
@@ -29,11 +30,13 @@ object BuildTimeConfig {
     val SERVICES_SENTRY_DSN_RUST: String? = null
     val BUG_REPORT_URL: String? = null
     val BUG_REPORT_APP_NAME: String? = null
-    const val PUSH_CONFIG_INCLUDE_FIREBASE: Boolean = true
+    // InterCom: Firebase is tied to Element's package name and Google project, UnifiedPush only.
+    const val PUSH_CONFIG_INCLUDE_FIREBASE: Boolean = false
     const val PUSH_CONFIG_INCLUDE_UNIFIED_PUSH: Boolean = true
-    val PUSHER_APP_ID_RELEASE: String? = null
-    val PUSHER_APP_ID_DEBUG: String? = null
-    val PUSHER_APP_ID_NIGHTLY: String? = null
-    const val ELEMENT_LINKS_ENABLED: Boolean = true
+    val PUSHER_APP_ID_RELEASE: String? = "com.c4g7.intercom.android"
+    val PUSHER_APP_ID_DEBUG: String? = "com.c4g7.intercom.android.debug"
+    val PUSHER_APP_ID_NIGHTLY: String? = "com.c4g7.intercom.android.nightly"
+    // InterCom: do not claim Element's https links (app.element.io, mobile.element.io...).
+    const val ELEMENT_LINKS_ENABLED: Boolean = false
     const val ELEMENT_MOBILE_LINK_PATH: String = "/element/"
 }

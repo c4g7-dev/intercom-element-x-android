@@ -8,6 +8,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- InterCom: screen sharing in native calls, see ElementCallOptions.isScreenSharingEnabled. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
     <application
         android:name=".ElementXApplication"
         android:allowBackup="false"
@@ -170,6 +173,16 @@
                 <data android:path="${elementMobileLinkPath}" />
             </intent-filter>
         </activity-alias>
+
+        <!--
+          InterCom: the native call library declares this service with `microphone|camera` only. Sharing the
+          screen needs `mediaProjection` too, declared by the host (element-call-android README, host requirements).
+        -->
+        <service
+            android:name="io.element.android.call.impl.services.ElementCallForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|camera|mediaProjection"
+            tools:node="merge" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

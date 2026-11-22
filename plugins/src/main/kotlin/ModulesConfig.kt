@@ -33,10 +33,8 @@ object ModulesConfig {
             AnalyticsConfig.Disabled
         }
     } else {
-        println("Analytics enabled with Posthog and Sentry")
-        AnalyticsConfig.Enabled(
-            withPosthog = true,
-            withSentry = true,
-        )
+        // InterCom: no analytics at all (no PostHog, no Sentry), the noop implementation is used.
+        println("Analytics disabled")
+        AnalyticsConfig.Disabled
     }
 }

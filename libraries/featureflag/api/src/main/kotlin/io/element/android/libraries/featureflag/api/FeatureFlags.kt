@@ -166,7 +166,8 @@ enum class FeatureFlags(
         key = "feature.native_call",
         title = "Native calls (experimental)",
         description = "Place calls with the native MatrixRTC stack instead of the Element Call WebView.",
-        defaultValue = { false },
+        // InterCom: on by default, the WebView cannot share the screen (no getDisplayMedia).
+        defaultValue = { true },
         isFinished = false,
     ),
     ReceiveNotificationsFromOtherSignedInAccounts(

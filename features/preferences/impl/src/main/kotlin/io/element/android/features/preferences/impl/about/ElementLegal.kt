@@ -28,9 +28,8 @@ sealed class ElementLegal(
 }
 
 fun getAllLegals(): ImmutableList<ElementLegal> {
+    // InterCom: Element's acceptable use and privacy policies cover Element's services, not this fork.
     return persistentListOf(
         ElementLegal.Copyright,
-        ElementLegal.AcceptableUsePolicy,
-        ElementLegal.PrivacyPolicy,
     )
 }

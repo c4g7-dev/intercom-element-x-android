@@ -1,3 +1,50 @@
+> [!IMPORTANT]
+> **This is InterCom for Android, an independent fork based on Element X Android.**
+> It is not an Element product and is not affiliated with, endorsed by or supported by Element.
+> Please report problems with this fork at <https://github.com/c4g7-dev/InterCom/issues>, not upstream.
+> Everything below the "InterCom for Android" section is the upstream README, kept for reference.
+
+# InterCom for Android
+
+The Android companion of [InterCom](https://github.com/c4g7-dev/InterCom), built from the `intercom` branch of
+this repository. Downloads are on the [InterCom releases page](https://github.com/c4g7-dev/InterCom/releases).
+
+What differs from upstream Element X Android:
+
+- Own name, icon and application id (`com.c4g7.intercom.android`): installs next to Element X, shares no data with it.
+- Calls use the native MatrixRTC stack ([element-call-android](https://github.com/element-hq/element-call-android))
+  by default instead of the Element Call WebView, with **screen sharing** enabled (the WebView cannot share the screen).
+  It can be switched back in the developer options ("Native calls").
+- OAuth client metadata for Matrix Authentication Service: redirect scheme `com.c4g7.intercom.android:/` with
+  client URI `https://c4g7.com` (MAS requires the scheme to be the reversed host of the client URI).
+  Change both in `plugins/src/main/kotlin/config/BuildTimeConfig.kt` when building for another domain.
+- No analytics (PostHog, Sentry) and no bug report upload: the no-op analytics module is used and no rageshake
+  server is configured.
+- No Firebase: push notifications use [UnifiedPush](https://unifiedpush.org/) only, so a distributor app such
+  as [ntfy](https://ntfy.sh/) must be installed on the phone.
+- Element's `https://*.element.io` app links are not claimed.
+
+Known limitations:
+
+- Screen shares are sent at up to 1280 px on the long edge and 15 fps. This preset is fixed inside
+  element-call-android 0.1.2, which exposes no option for it; the same holds for sharing the phone's audio.
+- Maps need a MapTiler key, none is bundled.
+
+Build (JDK 21, Android SDK 37):
+
+```sh
+./gradlew :app:assembleFdroidRelease
+```
+
+The release build is signed with the key given by the environment variables `INTERCOM_ANDROID_STOREFILE`,
+`INTERCOM_ANDROID_STOREPASSWORD`, `INTERCOM_ANDROID_KEYALIAS` and `INTERCOM_ANDROID_KEYPASSWORD`, and with the
+debug key when they are not set. The APKs are written to `app/build/outputs/apk/fdroid/release/`.
+
+InterCom for Android is free software under the [AGPL-3.0](LICENSE), like the code it is based on, which is
+copyright New Vector Ltd and Element Creations Ltd. "Element" is a trademark of New Vector Ltd.
+
+---
+
 [![Latest build](https://github.com/element-hq/element-x-android/actions/workflows/build.yml/badge.svg?query=branch%3Adevelop)](https://github.com/element-hq/element-x-android/actions/workflows/build.yml?query=branch%3Adevelop)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=element-x-android&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=element-x-android)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=element-x-android&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=element-x-android)

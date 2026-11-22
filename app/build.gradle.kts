@@ -107,6 +107,17 @@ android {
             )
             storePassword = environmentOrGradleValue("ELEMENT_ANDROID_NIGHTLY_STOREPASSWORD", "signing.element.nightly.storePassword")
         }
+        // InterCom: the release key lives outside of the repository and is only given through the environment
+        // (or ~/.gradle/gradle.properties). Without it, release builds fall back to the debug key.
+        val intercomStoreFile = environmentOrGradleValue("INTERCOM_ANDROID_STOREFILE", "signing.intercom.storeFile")
+        if (!intercomStoreFile.isNullOrBlank()) {
+            register("intercom") {
+                storeFile = file(intercomStoreFile)
+                storePassword = environmentOrGradleValue("INTERCOM_ANDROID_STOREPASSWORD", "signing.intercom.storePassword")
+                keyAlias = environmentOrGradleValue("INTERCOM_ANDROID_KEYALIAS", "signing.intercom.keyAlias")
+                keyPassword = environmentOrGradleValue("INTERCOM_ANDROID_KEYPASSWORD", "signing.intercom.keyPassword")
+            }
+        }
     }
 
     val baseAppName = BuildTimeConfig.APPLICATION_NAME
@@ -133,7 +144,7 @@ android {
                 "login_redirect_scheme",
                 oAuthRedirectSchemeBase,
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("intercom") ?: signingConfigs.getByName("debug")
 
             optimization {
                 enable = true
