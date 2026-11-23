@@ -19,6 +19,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import dev.zacsweers.metro.Inject
 import io.element.android.compound.theme.Theme
 import io.element.android.compound.theme.mapToTheme
+import io.element.android.features.intercomupdate.api.InterComUpdateIndicator
 import io.element.android.features.location.api.LocationService
 import io.element.android.features.preferences.impl.account.PreferencesAccountState
 import io.element.android.features.preferences.impl.userstatus.UserStatusState
@@ -66,6 +67,7 @@ class PreferencesRootPresenter(
     private val appPreferencesStore: AppPreferencesStore,
     private val userStatusPresenter: Presenter<UserStatusState>,
     private val preferencesAccountPresenter: Presenter<PreferencesAccountState>,
+    private val interComUpdateIndicator: InterComUpdateIndicator,
     @SessionCoroutineScope
     private val sessionCoroutineScope: CoroutineScope,
 ) : Presenter<PreferencesRootState> {
@@ -128,6 +130,8 @@ class PreferencesRootPresenter(
             }.toImmutableList()
         }
 
+        val isInterComUpdateAvailable by remember { interComUpdateIndicator.isUpdateAvailable }.collectAsState(initial = false)
+
         val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
         val hasAnalyticsProviders = remember { analyticsService.getAvailableAnalyticsProviders().isNotEmpty() }
 
@@ -170,6 +174,7 @@ class PreferencesRootPresenter(
             showDeveloperSettings = showDeveloperSettings,
             showLabsItem = showLabsItem,
             showLocationSettings = isLocationServiceAvailable,
+            isInterComUpdateAvailable = isInterComUpdateAvailable,
             snackbarMessage = snackbarMessage,
             eventSink = ::handleEvent,
         )

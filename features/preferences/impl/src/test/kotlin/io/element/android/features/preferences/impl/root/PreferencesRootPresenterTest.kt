@@ -13,6 +13,7 @@ package io.element.android.features.preferences.impl.root
 import app.cash.turbine.ReceiveTurbine
 import com.google.common.truth.Truth.assertThat
 import io.element.android.compound.theme.Theme
+import io.element.android.features.intercomupdate.api.InterComUpdateIndicator
 import io.element.android.features.location.api.LocationService
 import io.element.android.features.location.test.FakeLocationService
 import io.element.android.features.preferences.impl.account.aPreferencesAccountState
@@ -51,6 +52,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -402,6 +404,9 @@ class PreferencesRootPresenterTest {
         appPreferencesStore = appPreferencesStore,
         userStatusPresenter = { aUserStatusState() },
         preferencesAccountPresenter = { aPreferencesAccountState() },
+        interComUpdateIndicator = object : InterComUpdateIndicator {
+            override val isUpdateAvailable = flowOf(false)
+        },
         sessionCoroutineScope = this,
     )
 }

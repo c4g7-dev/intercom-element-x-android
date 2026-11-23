@@ -39,6 +39,7 @@ class PreferencesRootNode(
         fun navigateToSession(sessionId: SessionId)
         fun navigateToAnalyticsSettings()
         fun navigateToAbout()
+        fun navigateToInterComUpdate()
         fun navigateToDeveloperSettings()
         fun navigateToLockScreenSettings()
         fun navigateToMediaSettings()
@@ -77,6 +78,7 @@ class PreferencesRootNode(
             onSwitchToSession = callback::navigateToSession,
             onOpenAnalytics = callback::navigateToAnalyticsSettings,
             onOpenAbout = callback::navigateToAbout,
+            onOpenInterComUpdate = callback::navigateToInterComUpdate,
             onOpenDeveloperSettings = callback::navigateToDeveloperSettings,
             onOpenMediaSettings = callback::navigateToMediaSettings,
             onOpenLocationSettings = callback::navigateToLocationSettings,

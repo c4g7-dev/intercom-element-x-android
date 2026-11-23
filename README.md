@@ -32,6 +32,15 @@ What differs from upstream Element X Android:
 - No Firebase: push notifications use [UnifiedPush](https://unifiedpush.org/) only, so a distributor app such
   as [ntfy](https://ntfy.sh/) must be installed on the phone.
 - Element's `https://*.element.io` app links are not claimed.
+- **Updates itself** from the [InterCom releases](https://github.com/c4g7-dev/InterCom/releases)
+  (`features/intercomupdate`, Settings → InterCom updates): it looks for a newer `android-v…` release when the app
+  starts and every twelve hours (WorkManager, unmetered networks unless mobile data is allowed), offers it in a
+  notification, downloads the APK, checks its SHA-256 against the release's `android-update.json` and its signing
+  certificate against the running app's, and installs it through `PackageInstaller`. The first update needs the
+  user's permission to install apps and possibly a confirmation; on Android 12 or newer, later ones need neither.
+  The release's side of it is `tools/android-release.sh` and `docs/BUILDING.md` of the InterCom repository. A build
+  for another repository or application id changes `ReleaseSelector.DOWNLOAD_PREFIX` and
+  `DefaultReleaseSource.RELEASES_URL`; a debug build does not update itself.
 
 Known limitations:
 

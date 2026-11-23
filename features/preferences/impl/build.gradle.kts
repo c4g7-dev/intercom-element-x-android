@@ -74,6 +74,7 @@ dependencies {
     implementation(projects.features.lockscreen.api)
     implementation(projects.features.analytics.api)
     implementation(projects.features.enterprise.api)
+    implementation(projects.features.intercomupdate.api)
     implementation(projects.features.licenses.api)
     implementation(projects.features.location.api)
     implementation(projects.features.logout.api)

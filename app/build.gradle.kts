@@ -115,6 +115,12 @@ android {
                 storePassword = environmentOrGradleValue("INTERCOM_ANDROID_STOREPASSWORD", "signing.intercom.storePassword")
                 keyAlias = environmentOrGradleValue("INTERCOM_ANDROID_KEYALIAS", "signing.intercom.keyAlias")
                 keyPassword = environmentOrGradleValue("INTERCOM_ANDROID_KEYPASSWORD", "signing.intercom.keyPassword")
+                // Every APK signature scheme, not only v2, which is all the Android plugin writes for a minSdk of 24:
+                // v3 is what Android 9 and newer look for first, and v1 (the signed JAR) is what tools and
+                // installers that predate v2 read. The same key signs all three.
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }

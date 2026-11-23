@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- InterCom: the updater. English only; these strings are not part of Element's Localazy project. -->
+    <string name="screen_intercom_update_title">InterCom updates</string>
+    <string name="screen_intercom_update_installed_version">Installed: %1$s</string>
+    <string name="screen_intercom_update_unsupported">This build cannot update itself; only released versions can.</string>
+    <string name="screen_intercom_update_check_automatically_title">Look for updates</string>
+    <string name="screen_intercom_update_check_automatically_subtitle">When the app starts and every twelve hours. This asks GitHub for the list of InterCom releases; nothing about you is sent with it.</string>
+    <string name="screen_intercom_update_allow_metered_title">Use mobile data</string>
+    <string name="screen_intercom_update_allow_metered_subtitle">Check and download over metered connections too. An update is about 125 MB.</string>
+    <string name="screen_intercom_update_prereleases_title">Offer pre-releases</string>
+    <string name="screen_intercom_update_prereleases_subtitle">Versions that are published for testing.</string>
+    <string name="screen_intercom_update_action_check">Check now</string>
+    <string name="screen_intercom_update_action_update">Download and install</string>
+    <string name="screen_intercom_update_action_retry">Try again</string>
+    <string name="screen_intercom_update_action_allow_install">Allow InterCom to install apps</string>
+    <string name="screen_intercom_update_allow_install_subtitle">Android wants your permission once, under “Install unknown apps”.</string>
+    <string name="screen_intercom_update_status_idle">Not checked since the app started.</string>
+    <string name="screen_intercom_update_status_checking">Looking for updates…</string>
+    <string name="screen_intercom_update_status_up_to_date">InterCom is up to date.</string>
+    <string name="screen_intercom_update_status_available">InterCom %1$s is available.</string>
+    <string name="screen_intercom_update_status_downloading">Downloading InterCom %1$s…</string>
+    <string name="screen_intercom_update_status_verifying">Checking the download…</string>
+    <string name="screen_intercom_update_status_installing">Installing. InterCom closes while it is replaced.</string>
+    <string name="screen_intercom_update_status_awaiting_confirmation">Android asks you to confirm the update.</string>
+    <string name="screen_intercom_update_waiting_for_unmetered">On mobile data the download waits for Wi-Fi, unless “Use mobile data” is on.</string>
+    <string name="screen_intercom_update_release_notes">What is new</string>
+    <string name="screen_intercom_update_explanation">A download is installed only if it matches the checksum of the release and is signed with the same key as this app. For the first update, Android asks you to allow InterCom to install apps and may ask you to confirm; on Android 12 or newer, later updates install without a question. InterCom closes while it is replaced, and a notification tells you when it is done.</string>
+    <string name="screen_intercom_update_error_network">Could not reach GitHub. Check the connection and try again.</string>
+    <string name="screen_intercom_update_error_bad_release">The release on GitHub is incomplete or inconsistent. Try again later.</string>
+    <string name="screen_intercom_update_error_no_space">Not enough free storage. An update needs about 500 MB.</string>
+    <string name="screen_intercom_update_error_checksum">The download is damaged or is not the released file. It was deleted; try again.</string>
+    <string name="screen_intercom_update_error_apk_unreadable">Android cannot read the downloaded file. It was deleted.</string>
+    <string name="screen_intercom_update_error_apk_wrong">The downloaded file is not the announced version of InterCom. It was deleted.</string>
+    <string name="screen_intercom_update_error_apk_signature">The downloaded file is not signed with the key of this app, so it was not installed.</string>
+    <string name="screen_intercom_update_error_apk_no_signature">The signature of the download or of this app could not be read, so nothing was installed.</string>
+    <string name="screen_intercom_update_error_install_not_allowed">InterCom is not allowed to install apps yet.</string>
+    <string name="screen_intercom_update_error_install_aborted">The update was cancelled.</string>
+    <string name="screen_intercom_update_error_install_blocked">Android blocked the update. A device policy, Play Protect or Advanced Protection may forbid installing apps from outside a store.</string>
+    <string name="screen_intercom_update_error_install_conflict">The update conflicts with the installed app: it is signed with another key, or it is older.</string>
+    <string name="screen_intercom_update_error_install_incompatible">This device cannot run the new version: its Android version or its processor is not supported.</string>
+    <string name="screen_intercom_update_error_install_invalid">Android found the update file invalid.</string>
+    <string name="screen_intercom_update_error_install_storage">Not enough free storage to install the update.</string>
+    <string name="screen_intercom_update_error_install_timeout">The confirmation was not answered in time.</string>
+    <string name="screen_intercom_update_error_install_other">The update could not be installed.</string>
+    <string name="notification_intercom_update_channel">InterCom updates</string>
+    <string name="notification_intercom_update_available_title">InterCom %1$s is available</string>
+    <string name="notification_intercom_update_available_text">Tap “Update” to download and install it.</string>
+    <string name="notification_intercom_update_action_update">Update</string>
+    <string name="notification_intercom_update_progress_title">Updating to InterCom %1$s</string>
+    <string name="notification_intercom_update_confirm_title">Confirm the update to InterCom %1$s</string>
+    <string name="notification_intercom_update_confirm_text">Tap to continue.</string>
+    <string name="notification_intercom_update_failed_title">InterCom update failed</string>
+    <string name="notification_intercom_update_updated_title">InterCom was updated to %1$s</string>
+    <string name="notification_intercom_update_updated_text">Tap to open.</string>
+</resources>

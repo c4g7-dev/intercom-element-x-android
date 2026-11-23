@@ -67,6 +67,7 @@ fun PreferencesRootView(
     onOpenAnalytics: () -> Unit,
     onOpenLockScreenSettings: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenInterComUpdate: () -> Unit,
     onOpenDeveloperSettings: () -> Unit,
     onOpenMediaSettings: () -> Unit,
     onOpenLocationSettings: () -> Unit,
@@ -139,6 +140,7 @@ fun PreferencesRootView(
             GeneralSection(
                 state = state,
                 onOpenAbout = onOpenAbout,
+                onOpenInterComUpdate = onOpenInterComUpdate,
                 onOpenAnalytics = onOpenAnalytics,
                 onOpenDeveloperSettings = onOpenDeveloperSettings,
                 onOpenLabs = onOpenLabs,
@@ -251,6 +253,7 @@ private fun AppSettingsSection(
 private fun ColumnScope.GeneralSection(
     state: PreferencesRootState,
     onOpenAbout: () -> Unit,
+    onOpenInterComUpdate: () -> Unit,
     onOpenAnalytics: () -> Unit,
     onOpenLabs: () -> Unit,
     onOpenDeveloperSettings: () -> Unit,
@@ -273,6 +276,13 @@ private fun ColumnScope.GeneralSection(
             onClick = onOpenLabs,
         )
     }
+    // InterCom: the updater. Not translated, as the attribution in "About".
+    ListItem(
+        content = { Text("InterCom updates") },
+        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Download())),
+        trailingContent = if (state.isInterComUpdateAvailable) ListItemContent.Badge else null,
+        onClick = onOpenInterComUpdate,
+    )
     ListItem(
         content = { Text(stringResource(id = CommonStrings.common_about)) },
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Info())),
@@ -341,6 +351,7 @@ private fun ContentToPreview(state: PreferencesRootState) {
         onOpenMediaSettings = {},
         onOpenLabs = {},
         onOpenAbout = {},
+        onOpenInterComUpdate = {},
         onOpenLockScreenSettings = {},
         onEditProfileClick = {},
         onSecureBackupClick = {},
