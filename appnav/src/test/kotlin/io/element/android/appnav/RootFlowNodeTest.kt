@@ -12,6 +12,8 @@ package io.element.android.appnav
 import android.content.Intent
 import android.net.Uri
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import com.bumble.appyx.core.modality.AncestryInfo
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -30,6 +32,7 @@ import io.element.android.appnav.session.FakeSyncOrchestratorFactory
 import io.element.android.appnav.session.MatrixSessionCache
 import io.element.android.appnav.verification.IncomingVerificationRequestObserver
 import io.element.android.features.announcement.test.FakeAnnouncementService
+import io.element.android.features.intercomupdate.api.InterComUpdatePrompt
 import io.element.android.features.login.api.LoginEntryPoint
 import io.element.android.features.login.api.LoginParams
 import io.element.android.features.login.api.accesscontrol.AccountProviderAccessControl
@@ -365,6 +368,10 @@ class RootFlowNodeTest : RobolectricTest() {
             oAuthActionFlow = FakeOAuthActionFlow(),
             featureFlagService = featureFlagService,
             announcementService = FakeAnnouncementService(),
+            interComUpdatePrompt = object : InterComUpdatePrompt {
+                @Composable
+                override fun Render(modifier: Modifier) = Unit
+            },
             analyticsService = FakeAnalyticsService(),
             analyticsColdStartWatcher = FakeAnalyticsColdStartWatcher(),
             incomingVerificationRequestObserver = IncomingVerificationRequestObserver(

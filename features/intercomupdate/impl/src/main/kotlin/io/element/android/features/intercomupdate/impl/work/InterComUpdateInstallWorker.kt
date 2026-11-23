@@ -17,6 +17,7 @@ import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.binding
 import io.element.android.features.intercomupdate.impl.InterComUpdater
+import io.element.android.features.intercomupdate.impl.UpdateRun
 import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.workmanager.api.di.MetroWorkerFactory
 import io.element.android.libraries.workmanager.api.di.WorkerKey
@@ -29,9 +30,17 @@ class InterComUpdateInstallWorker(
     private val updater: InterComUpdater,
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        // The outcome is in the updater's state and in a notification; there is nothing for WorkManager to retry.
-        updater.downloadAndInstall()
-        return Result.success()
+        val userInitiated = inputData.getBoolean(USER_INITIATED, false)
+        // A failure is in the updater's state and in a notification, and is not WorkManager's to retry. An automatic
+        // update that waits for a call to end is: it runs again after WorkManager's back-off.
+        return when (updater.downloadAndInstall(userInitiated)) {
+            UpdateRun.Done -> Result.success()
+            UpdateRun.Postponed -> Result.retry()
+        }
+    }
+
+    companion object {
+        const val USER_INITIATED = "user_initiated"
     }
 
     @ContributesIntoMap(AppScope::class, binding = binding<MetroWorkerFactory.WorkerInstanceFactory<*>>())

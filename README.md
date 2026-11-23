@@ -33,9 +33,10 @@ What differs from upstream Element X Android:
   as [ntfy](https://ntfy.sh/) must be installed on the phone.
 - Element's `https://*.element.io` app links are not claimed.
 - **Updates itself** from the [InterCom releases](https://github.com/c4g7-dev/InterCom/releases)
-  (`features/intercomupdate`, Settings → InterCom updates): it looks for a newer `android-v…` release when the app
-  starts and every twelve hours (WorkManager, unmetered networks unless mobile data is allowed), offers it in a
-  notification, downloads the APK, checks its SHA-256 against the release's `android-update.json` and its signing
+  (`features/intercomupdate`, Settings → InterCom updates): it looks for a newer `android-v…` release whenever the app
+  comes to the screen (at most every half hour) and every twelve hours (WorkManager), installs it automatically or
+  offers it in a dialog ("Update now" / "Later") and a notification, downloads the APK (on unmetered networks unless
+  mobile data is allowed or the user asked), checks its SHA-256 against the release's `android-update.json` and its signing
   certificate against the running app's, and installs it through `PackageInstaller`. The first update needs the
   user's permission to install apps and possibly a confirmation; on Android 12 or newer, later ones need neither.
   The release's side of it is `tools/android-release.sh` and `docs/BUILDING.md` of the InterCom repository. A build

@@ -12,6 +12,7 @@ import android.content.pm.PackageInstaller
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
+import io.element.android.features.intercomupdate.impl.data.CallMonitor
 import io.element.android.features.intercomupdate.impl.data.InterComUpdateStore
 import io.element.android.features.intercomupdate.impl.data.ReleaseSource
 import io.element.android.features.intercomupdate.impl.data.UpdateFiles
@@ -19,12 +20,14 @@ import io.element.android.features.intercomupdate.impl.install.ApkInstaller
 import io.element.android.features.intercomupdate.impl.install.InstallFailure
 import io.element.android.features.intercomupdate.impl.logic.ApkInfoReader
 import io.element.android.features.intercomupdate.impl.logic.ApkVerifier
+import io.element.android.features.intercomupdate.impl.logic.OnFound
 import io.element.android.features.intercomupdate.impl.logic.ReleaseSelector
 import io.element.android.features.intercomupdate.impl.logic.Sha256
 import io.element.android.features.intercomupdate.impl.logic.UpdateCandidate
 import io.element.android.features.intercomupdate.impl.logic.UpdateError
 import io.element.android.features.intercomupdate.impl.logic.UpdateEvent
 import io.element.android.features.intercomupdate.impl.logic.UpdateManifest
+import io.element.android.features.intercomupdate.impl.logic.UpdatePolicy
 import io.element.android.features.intercomupdate.impl.logic.UpdateState
 import io.element.android.features.intercomupdate.impl.logic.reduce
 import io.element.android.features.intercomupdate.impl.notifications.UpdateNotifier
@@ -50,7 +53,6 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.io.IOException
-import kotlin.time.Duration.Companion.hours
 
 @ContributesBinding(AppScope::class)
 @SingleIn(AppScope::class)
@@ -63,6 +65,7 @@ class DefaultInterComUpdater(
     private val files: UpdateFiles,
     private val notifier: UpdateNotifier,
     private val scheduler: UpdateScheduler,
+    private val callMonitor: CallMonitor,
     private val clock: SystemClock,
     private val dispatchers: CoroutineDispatchers,
     @AppCoroutineScope private val coroutineScope: CoroutineScope,
@@ -71,6 +74,9 @@ class DefaultInterComUpdater(
     private val checkMutex = Mutex()
     private val updateMutex = Mutex()
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
+
+    // True when nothing is known, after a restart: then nothing is concluded about automatic installations.
+    @Volatile private var lastRunWasUserInitiated = true
     override val state: StateFlow<UpdateState> = _state.asStateFlow()
 
     override val isSupported: Boolean = buildMeta.buildType == BuildType.RELEASE
@@ -92,20 +98,45 @@ class DefaultInterComUpdater(
             }
         }
         scheduler.schedulePeriodicCheck(settings)
-        if (settings.checkAutomatically && clock.epochMillis() - store.lastCheck() > MIN_START_CHECK_INTERVAL.inWholeMilliseconds) {
-            scheduler.checkSoon(settings)
+    }
+
+    override suspend fun onAppOpened() {
+        if (!isSupported) return
+        val settings = store.settings.first()
+        if (UpdatePolicy.shouldCheckOnOpen(settings, clock.epochMillis(), store.lastCheckAttempt())) {
+            check(CheckTrigger.AppOpen)
+        } else {
+            // The permission to install may have been given, or a call may have ended, since the release was found.
+            installAutomaticallyIfWanted()
         }
     }
 
     override suspend fun onSettingsChanged() {
         if (!isSupported) return
         scheduler.schedulePeriodicCheck(store.settings.first())
+        installAutomaticallyIfWanted()
     }
 
-    override suspend fun check(manual: Boolean) {
+    /** Starts the automatic installation of the release on offer, and says whether it did. */
+    private suspend fun installAutomaticallyIfWanted(): Boolean {
+        val candidate = (_state.value as? UpdateState.Available)?.candidate ?: return false
+        val settings = store.settings.first()
+        val decision = UpdatePolicy.onFound(settings, candidate.versionCode, installer.isAllowedToInstall(), store.autoInstallFailedVersionCode())
+        if (decision != OnFound.AutoInstall) return false
+        scheduler.enqueueUpdate(settings, userInitiated = false)
+        return true
+    }
+
+    override suspend fun snooze() {
+        val candidate = _state.value.candidate ?: return
+        store.setSnooze(UpdatePolicy.snoozeFor(candidate.versionCode, clock.epochMillis()))
+    }
+
+    override suspend fun check(trigger: CheckTrigger) {
         if (!isSupported) return
         checkMutex.withLock {
             if (dispatch(UpdateEvent.CheckStarted) !is UpdateState.Checking) return
+            store.setLastCheckAttempt(clock.epochMillis())
             try {
                 val settings = store.settings.first()
                 val currentVersionCode = currentVersionCode()
@@ -123,7 +154,9 @@ class DefaultInterComUpdater(
                 store.setCandidate(candidate)
                 Timber.tag(TAG).i("Found ${candidate.versionName} (${candidate.versionCode})")
                 dispatch(UpdateEvent.Found(candidate))
-                if (!manual && store.notifiedVersionCode() < candidate.versionCode) {
+                val installsItself = installAutomaticallyIfWanted()
+                // With the app on screen the dialog offers the release; the notification is for when it is not.
+                if (!installsItself && trigger == CheckTrigger.Background && store.notifiedVersionCode() < candidate.versionCode) {
                     notifier.showAvailable(candidate)
                     store.setNotifiedVersionCode(candidate.versionCode)
                 }
@@ -145,40 +178,58 @@ class DefaultInterComUpdater(
 
     override fun requestUpdate() {
         if (!isSupported) return
-        coroutineScope.launch { scheduler.enqueueUpdate(store.settings.first()) }
+        // An update that is under way is the one that was asked for; replacing its work would only stop it.
+        if (_state.value.isBusy) return
+        coroutineScope.launch { scheduler.enqueueUpdate(store.settings.first(), userInitiated = true) }
     }
 
-    override suspend fun downloadAndInstall() {
-        if (!isSupported || !updateMutex.tryLock()) return
+    override suspend fun downloadAndInstall(userInitiated: Boolean): UpdateRun {
+        if (!isSupported || !updateMutex.tryLock()) return UpdateRun.Done
         try {
             if (_state.value.candidate == null) {
                 // Started from the notification in a new process: the candidate is in the store only.
-                val known = store.candidate() ?: return
+                val known = store.candidate() ?: return UpdateRun.Done
                 _state.update { if (it is UpdateState.Idle || it is UpdateState.UpToDate) UpdateState.Available(known) else it }
             }
-            val started = dispatch(UpdateEvent.DownloadStarted) as? UpdateState.Downloading ?: return
-            val error = run(started.candidate)
-            if (error != null) fail(error)
+            if (!userInitiated && callMonitor.isInCall()) return UpdateRun.Postponed
+            val started = dispatch(UpdateEvent.DownloadStarted) as? UpdateState.Downloading ?: return UpdateRun.Done
+            val candidate = started.candidate
+            lastRunWasUserInitiated = userInitiated
+            val outcome = run(candidate, userInitiated)
+            if (outcome.postponed) {
+                dispatch(UpdateEvent.Postponed)
+                notifier.cancel()
+                return UpdateRun.Postponed
+            }
+            val error = outcome.error
+            if (error != null) {
+                fail(error)
+                // What trying again would not change is not tried again unasked; the release stays on offer.
+                if (!userInitiated && error !is UpdateError.Network) store.setAutoInstallFailedVersionCode(candidate.versionCode)
+            }
+            return UpdateRun.Done
         } finally {
             updateMutex.unlock()
         }
     }
 
-    /** Returns what went wrong, or null once the system's installer has the APK. */
-    private suspend fun run(candidate: UpdateCandidate): UpdateError? {
+    /** How a run ended: with [error], [postponed], or with neither once the system's installer has the APK. */
+    private class Outcome(val error: UpdateError? = null, val postponed: Boolean = false)
+
+    private suspend fun run(candidate: UpdateCandidate, userInitiated: Boolean): Outcome {
         try {
-            if (!installer.isAllowedToInstall()) return UpdateError.InstallNotAllowed
+            if (!installer.isAllowedToInstall()) return Outcome(UpdateError.InstallNotAllowed)
             if (candidate.versionCode <= currentVersionCode()) {
                 forget()
                 _state.value = UpdateState.UpToDate
-                return null
+                return Outcome()
             }
             val apk = files.apkFile(candidate)
             val alreadyThere = withContext(dispatchers.io) { apk.isFile && Sha256.matches(apk, candidate.sha256) }
             if (!alreadyThere) {
                 withContext(dispatchers.io) { files.clear() }
                 // The download, the copy the installer makes of it, and the installed app.
-                if (files.freeBytes() < candidate.apkSize * FREE_SPACE_FACTOR) return UpdateError.NoSpace
+                if (files.freeBytes() < candidate.apkSize * FREE_SPACE_FACTOR) return Outcome(UpdateError.NoSpace)
                 notifier.showProgress(candidate, 0f)
                 releaseSource.download(candidate.apkUrl, apk, candidate.apkSize) { progress ->
                     dispatch(UpdateEvent.DownloadProgress(progress))
@@ -197,20 +248,22 @@ class DefaultInterComUpdater(
             }
             if (problem != null) {
                 withContext(dispatchers.io) { files.clear() }
-                return problem
+                return Outcome(problem)
             }
+            // The installation closes the app. Nobody asked for this one, so it does not end a call.
+            if (!userInitiated && callMonitor.isInCall()) return Outcome(postponed = true)
             dispatch(UpdateEvent.Verified)
             installer.install(apk, candidate)
-            return null
+            return Outcome()
         } catch (e: CancellationException) {
             fail(UpdateError.Network(null), notify = false)
             throw e
         } catch (e: IOException) {
             Timber.tag(TAG).w(e, "Update failed")
-            return UpdateError.Network(e.message)
+            return Outcome(UpdateError.Network(e.message))
         } catch (e: SecurityException) {
             Timber.tag(TAG).w(e, "Update refused")
-            return UpdateError.Install(PackageInstaller.STATUS_FAILURE_BLOCKED, e.message)
+            return Outcome(UpdateError.Install(PackageInstaller.STATUS_FAILURE_BLOCKED, e.message))
         }
     }
 
@@ -235,7 +288,12 @@ class DefaultInterComUpdater(
                 val error = UpdateError.Install(status, message)
                 // Saying no to the system's question needs no notification saying so.
                 fail(error, notify = InstallFailure.of(status) != InstallFailure.Aborted)
-                coroutineScope.launch { if (_state.value.candidate == null) restoreCandidate(error) }
+                coroutineScope.launch {
+                    if (_state.value.candidate == null) restoreCandidate(error)
+                    // An installation nobody asked for is not started again unasked after the system refused it.
+                    val candidate = _state.value.candidate
+                    if (!lastRunWasUserInitiated && candidate != null) store.setAutoInstallFailedVersionCode(candidate.versionCode)
+                }
             }
         }
     }
@@ -263,6 +321,5 @@ class DefaultInterComUpdater(
     private companion object {
         const val TAG = "InterComUpdate"
         const val FREE_SPACE_FACTOR = 3
-        val MIN_START_CHECK_INTERVAL = 1.hours
     }
 }

@@ -21,6 +21,7 @@ setupDependencyInjection()
 
 dependencies {
     api(projects.features.intercomupdate.api)
+    implementation(projects.features.call.api)
     implementation(projects.features.enterprise.api)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.core)

@@ -10,6 +10,7 @@ package io.element.android.features.intercomupdate.impl
 import android.content.Intent
 import io.element.android.features.intercomupdate.impl.data.InterComUpdateStore
 import io.element.android.features.intercomupdate.impl.data.ReleaseSource
+import io.element.android.features.intercomupdate.impl.data.Snooze
 import io.element.android.features.intercomupdate.impl.data.UpdateFiles
 import io.element.android.features.intercomupdate.impl.data.UpdateSettings
 import io.element.android.features.intercomupdate.impl.install.ApkInstaller
@@ -29,7 +30,24 @@ class InMemoryInterComUpdateStore(
     var candidate: UpdateCandidate? = null,
     var lastCheck: Long = 0,
     var notified: Long = 0,
+    var lastCheckAttempt: Long = 0,
+    var autoInstallFailed: Long = 0,
 ) : InterComUpdateStore {
+    override val snooze = MutableStateFlow(Snooze())
+    override suspend fun setSnooze(snooze: Snooze) {
+        this.snooze.value = snooze
+    }
+
+    override suspend fun lastCheckAttempt() = lastCheckAttempt
+    override suspend fun setLastCheckAttempt(millis: Long) {
+        lastCheckAttempt = millis
+    }
+
+    override suspend fun autoInstallFailedVersionCode() = autoInstallFailed
+    override suspend fun setAutoInstallFailedVersionCode(versionCode: Long) {
+        autoInstallFailed = versionCode
+    }
+
     override val settings = MutableStateFlow(initialSettings)
     override suspend fun setSettings(transform: (UpdateSettings) -> UpdateSettings) {
         settings.value = transform(settings.value)
@@ -58,6 +76,7 @@ class FakeReleaseSource(
     var failure: IOException? = null,
 ) : ReleaseSource {
     var downloads = 0
+    var onDownload: () -> Unit = {}
 
     override suspend fun releases(): List<GitHubRelease> {
         failure?.let { throw it }
@@ -72,6 +91,7 @@ class FakeReleaseSource(
     override suspend fun download(url: String, destination: File, expectedSize: Long, onProgress: (Float?) -> Unit) {
         failure?.let { throw it }
         downloads++
+        onDownload()
         onProgress(0.5f)
         destination.parentFile?.mkdirs()
         destination.writeBytes(apkContent)
@@ -137,11 +157,7 @@ class FakeUpdateScheduler : UpdateScheduler {
         events += if (settings.checkAutomatically) "periodic metered=${settings.allowMetered}" else "no periodic"
     }
 
-    override fun checkSoon(settings: UpdateSettings) {
-        events += "check soon"
-    }
-
-    override fun enqueueUpdate(settings: UpdateSettings) {
-        events += "update"
+    override fun enqueueUpdate(settings: UpdateSettings, userInitiated: Boolean) {
+        events += if (userInitiated) "update asked" else "update auto"
     }
 }

@@ -72,6 +72,15 @@ class UpdateStateTest {
     }
 
     @Test
+    fun `a postponed update is on offer again, but not once the installer has it`() {
+        assertThat(UpdateState.Downloading(candidate, 1f).reduce(UpdateEvent.Postponed)).isEqualTo(UpdateState.Available(candidate))
+        assertThat(UpdateState.Verifying(candidate).reduce(UpdateEvent.Postponed)).isEqualTo(UpdateState.Available(candidate))
+        val installing = UpdateState.Installing(candidate)
+        assertThat(installing.reduce(UpdateEvent.Postponed)).isSameInstanceAs(installing)
+        assertThat(UpdateState.Idle.reduce(UpdateEvent.Postponed)).isSameInstanceAs(UpdateState.Idle)
+    }
+
+    @Test
     fun `an update under way is neither restarted nor replaced by a check`() {
         val downloading = UpdateState.Downloading(candidate, 0.3f)
         assertThat(downloading.reduce(UpdateEvent.DownloadStarted)).isSameInstanceAs(downloading)

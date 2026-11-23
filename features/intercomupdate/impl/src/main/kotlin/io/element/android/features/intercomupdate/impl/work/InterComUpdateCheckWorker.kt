@@ -16,12 +16,13 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.binding
+import io.element.android.features.intercomupdate.impl.CheckTrigger
 import io.element.android.features.intercomupdate.impl.InterComUpdater
 import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.workmanager.api.di.MetroWorkerFactory
 import io.element.android.libraries.workmanager.api.di.WorkerKey
 
-/** Looks for a newer release, at the start of the app and every twelve hours. */
+/** Looks for a newer release every twelve hours, whether the app is opened or not. */
 @AssistedInject
 class InterComUpdateCheckWorker(
     @Assisted params: WorkerParameters,
@@ -30,7 +31,7 @@ class InterComUpdateCheckWorker(
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         // The outcome is in the updater's state and in a notification; there is nothing for WorkManager to retry.
-        updater.check(manual = false)
+        updater.check(CheckTrigger.Background)
         return Result.success()
     }
 

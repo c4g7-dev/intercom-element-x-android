@@ -10,6 +10,7 @@ package io.element.android.features.intercomupdate.impl.ui
 sealed interface InterComUpdateEvent {
     data class SetCheckAutomatically(val enabled: Boolean) : InterComUpdateEvent
     data class SetAllowMetered(val enabled: Boolean) : InterComUpdateEvent
+    data class SetAutoInstall(val enabled: Boolean) : InterComUpdateEvent
     data class SetIncludePrereleases(val enabled: Boolean) : InterComUpdateEvent
     data object CheckNow : InterComUpdateEvent
     data object Update : InterComUpdateEvent

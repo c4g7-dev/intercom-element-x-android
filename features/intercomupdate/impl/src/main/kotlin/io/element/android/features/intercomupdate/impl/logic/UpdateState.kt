@@ -72,6 +72,9 @@ sealed interface UpdateEvent {
     data object Downloaded : UpdateEvent
     data object Verified : UpdateEvent
     data object ConfirmationRequested : UpdateEvent
+
+    /** An automatic update waits for a better moment, the end of a call; what was downloaded is kept. */
+    data object Postponed : UpdateEvent
     data class UpdateFailed(val error: UpdateError) : UpdateEvent
 }
 
@@ -98,6 +101,11 @@ fun UpdateState.reduce(event: UpdateEvent): UpdateState {
         is UpdateEvent.DownloadProgress -> if (this is UpdateState.Downloading) copy(progress = event.progress) else this
         UpdateEvent.Downloaded -> if (this is UpdateState.Downloading) UpdateState.Verifying(candidate) else this
         UpdateEvent.Verified -> if (this is UpdateState.Verifying) UpdateState.Installing(candidate) else this
+        UpdateEvent.Postponed -> if (current != null && (this is UpdateState.Downloading || this is UpdateState.Verifying)) {
+            UpdateState.Available(current)
+        } else {
+            this
+        }
         UpdateEvent.ConfirmationRequested -> if (this is UpdateState.Installing) UpdateState.AwaitingConfirmation(candidate) else this
         // Also when nothing is under way: the installer may answer after the app was restarted.
         is UpdateEvent.UpdateFailed -> if (this is UpdateState.Checking) this else UpdateState.Failed(event.error, current)

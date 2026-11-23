@@ -33,6 +33,7 @@ open class InterComUpdateStatePreviewParam : PreviewParameterProvider<InterComUp
             ),
             anInterComUpdateState(updateState = UpdateState.Failed(UpdateError.BadApk(ApkRejection.SignatureMismatch), anUpdateCandidate())),
             anInterComUpdateState(isSupported = false),
+            anInterComUpdateState(settings = UpdateSettings(autoInstall = false, allowMetered = true)),
         )
 }
 

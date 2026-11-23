@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
+import io.element.android.features.intercomupdate.impl.CheckTrigger
 import io.element.android.features.intercomupdate.impl.InterComUpdater
 import io.element.android.features.intercomupdate.impl.data.InterComUpdateStore
 import io.element.android.features.intercomupdate.impl.data.NetworkMeter
@@ -51,10 +52,11 @@ class InterComUpdatePresenter(
             when (event) {
                 is InterComUpdateEvent.SetCheckAutomatically -> changeSettings { it.copy(checkAutomatically = event.enabled) }
                 is InterComUpdateEvent.SetAllowMetered -> changeSettings { it.copy(allowMetered = event.enabled) }
+                is InterComUpdateEvent.SetAutoInstall -> changeSettings { it.copy(autoInstall = event.enabled) }
                 is InterComUpdateEvent.SetIncludePrereleases -> changeSettings { it.copy(includePrereleases = event.enabled) }
                 InterComUpdateEvent.CheckNow -> {
                     isMetered = networkMeter.isMetered()
-                    appCoroutineScope.launch { updater.check(manual = true) }
+                    appCoroutineScope.launch { updater.check(CheckTrigger.Manual) }
                 }
                 InterComUpdateEvent.Update -> {
                     isMetered = networkMeter.isMetered()

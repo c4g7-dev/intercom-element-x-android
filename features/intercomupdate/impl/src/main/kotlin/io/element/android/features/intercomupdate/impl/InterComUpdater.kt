@@ -21,21 +21,55 @@ interface InterComUpdater {
     /** When the app starts: offers again what an earlier check found, and schedules the checks. */
     suspend fun start()
 
+    /**
+     * Every time the app comes to the screen: looks for a newer release, at most once in
+     * [io.element.android.features.intercomupdate.impl.logic.UpdatePolicy.OPEN_CHECK_INTERVAL], on any connection.
+     */
+    suspend fun onAppOpened()
+
     /** Applies the settings to the scheduled checks. */
     suspend fun onSettingsChanged()
 
-    /** Looks for a newer release. [manual] is true for "Check now", which needs no notification. */
-    suspend fun check(manual: Boolean)
+    /**
+     * Looks for a newer release. One that is found is installed automatically where the settings and the system
+     * allow, and is otherwise on offer; a [CheckTrigger.Background] check says so in a notification.
+     */
+    suspend fun check(trigger: CheckTrigger)
 
-    /** Schedules [downloadAndInstall] for when the network allows it. */
+    /** The user asks for the update: [downloadAndInstall] as soon as there is any connection. */
     fun requestUpdate()
 
-    /** Downloads the release that was found, checks it and hands it to the system's installer. */
-    suspend fun downloadAndInstall()
+    /** "Later": the release on offer is not brought up in a dialog for a day. */
+    suspend fun snooze()
+
+    /**
+     * Downloads the release that was found, checks it and hands it to the system's installer.
+     * Not [userInitiated], it does not interrupt a call: it returns [UpdateRun.Postponed] to be run again later.
+     */
+    suspend fun downloadAndInstall(userInitiated: Boolean): UpdateRun
 
     /** The installer's answer: a `PackageInstaller.STATUS_*`, its message, and what to show the user if it asks. */
     fun onInstallStatus(status: Int, message: String?, confirmation: Intent?)
 
     /** The first sign of life of a new version. */
     fun onAppReplaced()
+}
+
+enum class CheckTrigger {
+    /** "Check now" in the settings. */
+    Manual,
+
+    /** The app came to the screen. */
+    AppOpen,
+
+    /** The periodic check, with the app possibly not on screen. */
+    Background,
+}
+
+enum class UpdateRun {
+    /** It ran to its end, whatever that is; the updater's state tells. */
+    Done,
+
+    /** It waits for a call to end. */
+    Postponed,
 }

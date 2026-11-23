@@ -46,6 +46,7 @@ import io.element.android.appnav.verification.IncomingVerificationRequestObserve
 import io.element.android.appnav.verification.OtherSessionIncomingVerificationNode
 import io.element.android.appnav.verification.OtherSessionVerificationNode
 import io.element.android.features.announcement.api.AnnouncementService
+import io.element.android.features.intercomupdate.api.InterComUpdatePrompt
 import io.element.android.features.login.api.LoginParams
 import io.element.android.features.login.api.accesscontrol.AccountProviderAccessControl
 import io.element.android.features.rageshake.api.bugreport.BugReportEntryPoint
@@ -113,6 +114,7 @@ class RootFlowNode(
     private val oAuthActionFlow: OAuthActionFlow,
     private val featureFlagService: FeatureFlagService,
     private val announcementService: AnnouncementService,
+    private val interComUpdatePrompt: InterComUpdatePrompt,
     private val analyticsService: AnalyticsService,
     private val analyticsColdStartWatcher: AnalyticsColdStartWatcher,
     private val incomingVerificationRequestObserver: IncomingVerificationRequestObserver,
@@ -362,6 +364,8 @@ class RootFlowNode(
             }
             BackstackView(transitionHandler = transitionHandler)
             announcementService.Render(Modifier)
+            // InterCom: "<version> is available" when the app is opened.
+            interComUpdatePrompt.Render(Modifier)
         }
     }
 

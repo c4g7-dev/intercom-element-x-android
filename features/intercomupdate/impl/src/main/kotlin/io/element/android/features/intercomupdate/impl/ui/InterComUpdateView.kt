@@ -121,7 +121,7 @@ private fun UpdateSection(
                     ),
                     onClick = { state.eventSink(InterComUpdateEvent.Update) },
                 )
-                if (state.isMetered && !state.settings.allowMetered) {
+                if (state.isMetered && !state.settings.allowMetered && state.settings.autoInstall) {
                     Text(
                         text = stringResource(R.string.screen_intercom_update_waiting_for_unmetered),
                         style = ElementTheme.typography.fontBodySmRegular,
@@ -169,6 +169,12 @@ private fun SettingsSection(state: InterComUpdateState) {
             subtitle = stringResource(R.string.screen_intercom_update_check_automatically_subtitle),
             isChecked = state.settings.checkAutomatically,
             onCheckedChange = { state.eventSink(InterComUpdateEvent.SetCheckAutomatically(it)) },
+        )
+        PreferenceSwitch(
+            title = stringResource(R.string.screen_intercom_update_auto_install_title),
+            subtitle = stringResource(R.string.screen_intercom_update_auto_install_subtitle),
+            isChecked = state.settings.autoInstall,
+            onCheckedChange = { state.eventSink(InterComUpdateEvent.SetAutoInstall(it)) },
         )
         PreferenceSwitch(
             title = stringResource(R.string.screen_intercom_update_allow_metered_title),

@@ -7,6 +7,7 @@
 
 package io.element.android.features.intercomupdate.impl.data
 
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -29,6 +30,14 @@ data class UpdateSettings(
     val allowMetered: Boolean = false,
     /** Offer pre-releases too. */
     val includePrereleases: Boolean = false,
+    /** Download a release as soon as it is found and install it as soon as possible, without being asked. */
+    val autoInstall: Boolean = true,
+)
+
+/** "Later": the release with [versionCode] is not offered in a dialog before [untilMillis]. */
+data class Snooze(
+    val versionCode: Long = 0,
+    val untilMillis: Long = 0,
 )
 
 /** What the updater remembers between runs of the app. */
@@ -39,6 +48,17 @@ interface InterComUpdateStore {
     /** The time of the last successful check, in milliseconds since the epoch, or 0. */
     suspend fun lastCheck(): Long
     suspend fun setLastCheck(millis: Long)
+
+    /** The time the last check was started, successful or not, which is what spaces the checks at the app's opening. */
+    suspend fun lastCheckAttempt(): Long
+    suspend fun setLastCheckAttempt(millis: Long)
+
+    val snooze: Flow<Snooze>
+    suspend fun setSnooze(snooze: Snooze)
+
+    /** The version code whose automatic installation failed, so that it is offered instead of tried again and again. */
+    suspend fun autoInstallFailedVersionCode(): Long
+    suspend fun setAutoInstallFailedVersionCode(versionCode: Long)
 
     /** The release found by the last check, so that it is still on offer after a restart. */
     suspend fun candidate(): UpdateCandidate?
@@ -57,25 +77,22 @@ class DefaultInterComUpdateStore(
     private val store = preferenceDataStoreFactory.create("intercom_update")
     private val json = Json { ignoreUnknownKeys = true }
 
-    override val settings: Flow<UpdateSettings> = store.data.map { prefs ->
-        UpdateSettings(
-            checkAutomatically = prefs[checkAutomaticallyKey] ?: true,
-            allowMetered = prefs[allowMeteredKey] ?: false,
-            includePrereleases = prefs[includePrereleasesKey] ?: false,
-        )
-    }
+    override val settings: Flow<UpdateSettings> = store.data.map { it.toSettings() }
+
+    private fun Preferences.toSettings() = UpdateSettings(
+        checkAutomatically = this[checkAutomaticallyKey] ?: true,
+        allowMetered = this[allowMeteredKey] ?: false,
+        includePrereleases = this[includePrereleasesKey] ?: false,
+        autoInstall = this[autoInstallKey] ?: true,
+    )
 
     override suspend fun setSettings(transform: (UpdateSettings) -> UpdateSettings) {
         store.edit { prefs ->
-            val current = UpdateSettings(
-                checkAutomatically = prefs[checkAutomaticallyKey] ?: true,
-                allowMetered = prefs[allowMeteredKey] ?: false,
-                includePrereleases = prefs[includePrereleasesKey] ?: false,
-            )
-            val new = transform(current)
+            val new = transform(prefs.toSettings())
             prefs[checkAutomaticallyKey] = new.checkAutomatically
             prefs[allowMeteredKey] = new.allowMetered
             prefs[includePrereleasesKey] = new.includePrereleases
+            prefs[autoInstallKey] = new.autoInstall
         }
     }
 
@@ -83,6 +100,27 @@ class DefaultInterComUpdateStore(
 
     override suspend fun setLastCheck(millis: Long) {
         store.edit { it[lastCheckKey] = millis }
+    }
+
+    override suspend fun lastCheckAttempt(): Long = store.data.first()[lastCheckAttemptKey] ?: 0
+
+    override suspend fun setLastCheckAttempt(millis: Long) {
+        store.edit { it[lastCheckAttemptKey] = millis }
+    }
+
+    override val snooze: Flow<Snooze> = store.data.map { Snooze(it[snoozeVersionKey] ?: 0, it[snoozeUntilKey] ?: 0) }
+
+    override suspend fun setSnooze(snooze: Snooze) {
+        store.edit {
+            it[snoozeVersionKey] = snooze.versionCode
+            it[snoozeUntilKey] = snooze.untilMillis
+        }
+    }
+
+    override suspend fun autoInstallFailedVersionCode(): Long = store.data.first()[autoInstallFailedKey] ?: 0
+
+    override suspend fun setAutoInstallFailedVersionCode(versionCode: Long) {
+        store.edit { it[autoInstallFailedKey] = versionCode }
     }
 
     override suspend fun candidate(): UpdateCandidate? {
@@ -109,5 +147,10 @@ class DefaultInterComUpdateStore(
         val lastCheckKey = longPreferencesKey("last_check")
         val candidateKey = stringPreferencesKey("candidate")
         val notifiedKey = longPreferencesKey("notified_version_code")
+        val autoInstallKey = booleanPreferencesKey("auto_install")
+        val lastCheckAttemptKey = longPreferencesKey("last_check_attempt")
+        val snoozeVersionKey = longPreferencesKey("snooze_version_code")
+        val snoozeUntilKey = longPreferencesKey("snooze_until")
+        val autoInstallFailedKey = longPreferencesKey("auto_install_failed_version_code")
     }
 }
