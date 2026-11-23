@@ -57,10 +57,9 @@ android {
         }
         manifestPlaceholders["elementMobileLinkPath"] = elementMobileLinkPath
 
-        // Keep abiFilter for the universalApk
-        ndk {
-            abiFilters += listOf("armeabi-v7a", "x86", "arm64-v8a", "x86_64")
-        }
+        // InterCom: arm64-v8a only. The call core is InterCom's own build (c4g7-dev/intercom-matrix-rust-rtc), made for
+        // that one ABI; an APK for another would install and then fail at its first call. The split below says so;
+        // an ndk abiFilter beside it is refused by the Android plugin once there is no universal APK.
 
         // Ref: https://developer.android.com/studio/build/configure-apk-splits.html#configure-abi-split
         splits {
@@ -78,9 +77,9 @@ android {
 
                 if (!buildingAppBundle) {
                     // Specifies a list of ABIs that Gradle should create APKs for.
-                    include("armeabi-v7a", "x86", "arm64-v8a", "x86_64")
-                    // Generate a universal APK that includes all ABIs, so user who installs from CI tool can use this one by default.
-                    isUniversalApk = true
+                    include("arm64-v8a")
+                    // InterCom: no universal APK, it would be the arm64-v8a one under another name.
+                    isUniversalApk = false
                 }
             }
         }

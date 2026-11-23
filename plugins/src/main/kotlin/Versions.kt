@@ -61,7 +61,7 @@ object Versions {
      * (`26.11.1-intercom.2`) and is the last digit of the version code, after the ABI digit, so that every
      * revision installs over the one before it. Back to 1 with each new upstream version.
      */
-    const val INTERCOM_REVISION = 2
+    const val INTERCOM_REVISION = 3
     val VERSION_NAME = "$versionYear.${versionMonth.toString().padStart(2, '0')}.$versionReleaseNumber-intercom.$INTERCOM_REVISION"
 
     /**

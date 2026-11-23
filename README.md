@@ -17,7 +17,11 @@ What differs from upstream Element X Android:
   The stack is InterCom's fork of element-call-android,
   [intercom-element-call-android](https://github.com/c4g7-dev/intercom-element-call-android), which adds:
   - the **phone's audio** in a screen share ("Share phone audio" in the sheet the share button opens, on by default;
-    Android 10 or newer; apps that forbid capture, and calls, are silent in it);
+    Android 10 or newer; apps that forbid capture, and calls, are silent in it), sent for **music**: stereo Opus at
+    160 kbit/s (128 or 192 in the same sheet), every frame sent;
+  - the **audio of a screen somebody else shares** is played, with the voices and through the same output;
+  - a **volume for every tile**: press and hold somebody's tile for a slider from 0 to 200 % and a mute, for their
+    voice and separately for their shared screen's audio. Only this phone hears it, and it is remembered per person;
   - screen shares at the screen's **own resolution up to 1440p**, 30 or 15 fps, one layer, up to 10 Mbit/s;
   - an **equal grid** layout (call settings → Preferences → Layout): every tile the same size, shared screens shown whole.
 - OAuth client metadata for Matrix Authentication Service: redirect scheme `com.c4g7.intercom.android:/` with
@@ -31,24 +35,32 @@ What differs from upstream Element X Android:
 
 Known limitations:
 
-- The phone's audio in a screen share is sent with the RTC core's default audio settings (Opus at up to 48 kbit/s):
-  music quality at a higher bitrate needs a change in the Rust core (matrix-rust-rtc), which is used as released.
-- A screen share shared by someone else is shown, but its audio is not played on the phone yet.
+- arm64-v8a phones only (every phone of the last years): the RTC core is InterCom's own build of
+  [intercom-matrix-rust-rtc](https://github.com/c4g7-dev/intercom-matrix-rust-rtc), made for that one ABI.
+- A shared screen's audio is played as part of the call, so it follows the call's output. Over a Bluetooth headset
+  that means the headset's call mode, which is mono and narrow; on the speaker, the earpiece and wired headphones it
+  is as it was sent.
+- Stereo and the bitrate of the phone's audio in a share depend on the media server (a LiveKit SFU) answering the
+  request for them, which a current one does. None of this release's call features has been tried in a real call.
 - Encoding a 1440p or 1080p share at 30 fps is heavy for a phone: choose a lower resolution or 15 fps in the share
   sheet if the phone gets hot or the picture stutters.
 - Maps need a MapTiler key, none is bundled.
 
-Build (JDK 21, Android SDK 37). The call library fork is not on Maven Central, so it is published to the local
-Maven repository (`~/.m2`) first; `gradle/libs.versions.toml` (`element_call`) names the version expected there:
+Build (JDK 21, Android SDK 37, and for the RTC core: rustup with the `aarch64-linux-android` target, `cargo-ndk`
+and the Android NDK). Neither the RTC core fork nor the call library fork is on Maven Central, so each is published
+to the local Maven repository (`~/.m2`) first; `gradle/libs.versions.toml` (`element_call`) names the library version
+expected there, and the library names the core's:
 
 ```sh
+git clone -b intercom https://github.com/c4g7-dev/intercom-matrix-rust-rtc.git
+(cd intercom-matrix-rust-rtc && scripts/build-intercom-android.sh)
 git clone -b intercom https://github.com/c4g7-dev/intercom-element-call-android.git
 (cd intercom-element-call-android && ./gradlew publishToMavenLocal)
 ./gradlew :app:assembleFdroidRelease
 ```
 
-In the [InterCom](https://github.com/c4g7-dev/InterCom) repository both are submodules, `element-call-android` and
-`element-x-android`.
+In the [InterCom](https://github.com/c4g7-dev/InterCom) repository the three are submodules, `matrix-rust-rtc`,
+`element-call-android` and `element-x-android`; its `docs/BUILDING.md` has the details.
 
 The release build is signed with the key given by the environment variables `INTERCOM_ANDROID_STOREFILE`,
 `INTERCOM_ANDROID_STOREPASSWORD`, `INTERCOM_ANDROID_KEYALIAS` and `INTERCOM_ANDROID_KEYPASSWORD`, and with the

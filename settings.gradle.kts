@@ -82,6 +82,9 @@ dependencyResolutionManagement {
                     includeModule("io.element.android", "element-call")
                     includeModule("io.element.android", "element-call-ui")
                     includeModule("io.element.android", "element-call-test")
+                    // The RTC core the library depends on: InterCom's build of c4g7-dev/intercom-matrix-rust-rtc,
+                    // published by that repository's scripts/build-intercom-android.sh.
+                    includeModule("io.element.android", "matrix-rtc-android")
                 }
             }
         }
