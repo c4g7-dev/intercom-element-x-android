@@ -14,13 +14,13 @@ import androidx.compose.ui.graphics.Color
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.features.enterprise.test.FakeEnterpriseService
-import io.element.android.features.rageshake.api.logs.LogsSharer
-import io.element.android.features.rageshake.test.logs.FakeLogsSharer
 import io.element.android.features.preferences.impl.developer.appsettings.anAppDeveloperSettingsState
 import io.element.android.features.preferences.impl.tasks.FakeClearCacheUseCase
 import io.element.android.features.preferences.impl.tasks.FakeComputeCacheSizeUseCase
 import io.element.android.features.preferences.impl.tasks.FakeMarkAllRoomsAsRead
 import io.element.android.features.preferences.impl.tasks.VacuumStoresUseCase
+import io.element.android.features.rageshake.api.logs.LogsSharer
+import io.element.android.features.rageshake.test.logs.FakeLogsSharer
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.androidutils.clipboard.FakeClipboardHelper
 import io.element.android.libraries.androidutils.filesize.FakeFileSizeFormatter

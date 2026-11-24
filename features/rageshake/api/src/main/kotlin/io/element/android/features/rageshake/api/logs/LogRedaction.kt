@@ -36,7 +36,13 @@ object LogRedaction {
         result = matrixToken.replace(result, REDACTED)
         result = bearer.replace(result) { "${it.groupValues[1]} $REDACTED" }
         result = namedSecret.replace(result) { match ->
-            if (match.groupValues[2] == REDACTED) match.value else match.groupValues[1] + REDACTED
+            val name = match.groupValues[1]
+            when {
+                match.groupValues[2] == REDACTED -> match.value
+                // The name of an endpoint (MSC4195 `get_token`), not a token: "get_token: not supported".
+                name.contains("get_token", ignoreCase = true) -> match.value
+                else -> name + REDACTED
+            }
         }
         return result
     }

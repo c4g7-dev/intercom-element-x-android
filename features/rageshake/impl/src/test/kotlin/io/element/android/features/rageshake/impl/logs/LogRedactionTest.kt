@@ -44,5 +44,7 @@ class LogRedactionTest {
         val line = "ElementCall: joining !room:example.org as @alice:example.org, \$event:example.org, 3 tokens left"
         assertThat(LogRedaction.redact(line)).isEqualTo(line)
         assertThat(LogRedaction.redact("")).isEmpty()
+        val endpoint = "the homeserver does not support MSC4195 get_token: MSC4195 get_token is not exposed by the SDK bindings"
+        assertThat(LogRedaction.redact(endpoint)).isEqualTo(endpoint)
     }
 }
