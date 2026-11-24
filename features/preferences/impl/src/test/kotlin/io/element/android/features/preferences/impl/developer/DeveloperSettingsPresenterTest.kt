@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Color
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.features.enterprise.test.FakeEnterpriseService
+import io.element.android.features.rageshake.api.logs.LogsSharer
+import io.element.android.features.rageshake.test.logs.FakeLogsSharer
 import io.element.android.features.preferences.impl.developer.appsettings.anAppDeveloperSettingsState
 import io.element.android.features.preferences.impl.tasks.FakeClearCacheUseCase
 import io.element.android.features.preferences.impl.tasks.FakeComputeCacheSizeUseCase
@@ -45,6 +47,7 @@ import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.test
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -293,6 +296,28 @@ class DeveloperSettingsPresenterTest {
         }
     }
 
+    @Test
+    fun `present - share logs shares them, and says so when it cannot`() = runTest {
+        val toastHelper = FakeToastHelper()
+        var results = listOf(Result.success(Unit), Result.failure<Unit>(IllegalStateException("There are no log files")))
+        val shareLambda = lambdaRecorder<Result<Unit>> { results.first().also { results = results.drop(1) } }
+        val presenter = createDeveloperSettingsPresenter(
+            toastHelper = toastHelper,
+            logsSharer = FakeLogsSharer(shareResult = shareLambda),
+        )
+        presenter.test {
+            val state = awaitItem()
+            state.eventSink(DeveloperSettingsEvent.ShareLogs)
+            runCurrent()
+            assertThat(toastHelper.shownToasts).isEmpty()
+            state.eventSink(DeveloperSettingsEvent.ShareLogs)
+            runCurrent()
+            shareLambda.assertions().isCalledExactly(2)
+            assertThat(toastHelper.shownToasts).containsExactly(CommonStrings.error_unknown)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private fun createDeveloperSettingsPresenter(
         navigator: DeveloperSettingsNavigator = DeveloperSettingsNavigator { _, _ -> lambdaError() },
         sessionId: SessionId = A_SESSION_ID,
@@ -307,6 +332,7 @@ class DeveloperSettingsPresenterTest {
         notificationSettingsService: NotificationSettingsService = FakeNotificationSettingsService(),
         clipboardHelper: ClipboardHelper = FakeClipboardHelper(),
         toastHelper: ToastHelper = FakeToastHelper(),
+        logsSharer: LogsSharer = FakeLogsSharer(),
     ): DeveloperSettingsPresenter {
         return DeveloperSettingsPresenter(
             navigator = navigator,
@@ -324,6 +350,7 @@ class DeveloperSettingsPresenterTest {
             notificationSettingsService = notificationSettingsService,
             clipboardHelper = clipboardHelper,
             toastHelper = toastHelper,
+            logsSharer = logsSharer,
         )
     }
 }

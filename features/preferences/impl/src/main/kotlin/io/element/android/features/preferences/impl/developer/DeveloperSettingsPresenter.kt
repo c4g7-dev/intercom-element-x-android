@@ -26,6 +26,7 @@ import io.element.android.features.preferences.impl.tasks.ClearCacheUseCase
 import io.element.android.features.preferences.impl.tasks.ComputeCacheSizeUseCase
 import io.element.android.features.preferences.impl.tasks.MarkAllRoomsAsRead
 import io.element.android.features.preferences.impl.tasks.VacuumStoresUseCase
+import io.element.android.features.rageshake.api.logs.LogsSharer
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.androidutils.filesize.FileSizeFormatter
 import io.element.android.libraries.androidutils.toast.ToastHelper
@@ -66,6 +67,7 @@ class DeveloperSettingsPresenter(
     private val notificationSettingsService: NotificationSettingsService,
     private val clipboardHelper: ClipboardHelper,
     private val toastHelper: ToastHelper,
+    private val logsSharer: LogsSharer,
 ) : Presenter<DeveloperSettingsState> {
     @AssistedFactory
     fun interface Factory {
@@ -138,6 +140,11 @@ class DeveloperSettingsPresenter(
                 is DeveloperSettingsEvent.CopyToClipboard -> {
                     clipboardHelper.copyPlainText(event.text) {
                         toastHelper.show(CommonStrings.common_copied_to_clipboard)
+                    }
+                }
+                DeveloperSettingsEvent.ShareLogs -> coroutineScope.launch {
+                    logsSharer.share().onFailure {
+                        toastHelper.show(CommonStrings.error_unknown)
                     }
                 }
             }

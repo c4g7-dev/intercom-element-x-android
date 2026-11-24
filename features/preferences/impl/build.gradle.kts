@@ -114,6 +114,7 @@ dependencies {
     testImplementation(projects.features.location.test)
     testImplementation(projects.features.lockscreen.test)
     testImplementation(projects.features.logout.test)
+    testImplementation(projects.features.rageshake.test)
     testImplementation(projects.libraries.indicator.test)
     testImplementation(projects.libraries.pushproviders.test)
     testImplementation(projects.libraries.sessionStorage.test)

@@ -176,7 +176,21 @@ class DefaultElementCallControllers(
             // RTC core. The core's own filter holds down the parts that log per frame.
             logLevel = maxOf(logLevel, LogLevel.DEBUG).toMatrixRtcLogLevel(),
             writesToLogcat = featureFlagService.isFeatureEnabled(FeatureFlags.PrintLogsToLogcat),
+            // InterCom: the core's records go through Timber as well, so a release build has them in its log files,
+            // and in logcat through the redacting LogcatMirrorTree (tag matrix-rtc).
+            writesToHostLog = true,
+            filter = CORE_LOG_FILTER,
         )
+    }
+
+    private companion object {
+        /**
+         * The library's default with the SFU connection at debug: `livekit` is where the token, the signalling and
+         * the negotiation are reported, and those are what a call that ends at once is about. The per-frame parts
+         * stay down.
+         */
+        const val CORE_LOG_FILTER = "matrix_rtc_media=debug,matrix_rtc_livekit=debug,matrix_rtc_transport=debug,matrix_rtc_call=debug," +
+            "livekit=debug,livekit_api=debug,livekit_signaling=debug,libwebrtc=warn,webrtc_sys=warn"
     }
 
     private fun LogLevel.toMatrixRtcLogLevel(): MatrixRtcLogLevel = when (this) {

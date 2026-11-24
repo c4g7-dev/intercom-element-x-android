@@ -67,7 +67,7 @@ kover = "0.9.11"
 # InterCom: the fork https://github.com/c4g7-dev/intercom-element-call-android (branch `intercom`), resolved from
 # mavenLocal: run `./gradlew publishToMavenLocal` there first (see README, "Build"). It brings InterCom's build of the
 # RTC core, io.element.android:matrix-rtc-android, which is resolved from mavenLocal too (settings.gradle.kts).
-element_call = "0.1.2-intercom.3"
+element_call = "0.1.2-intercom.4"
 
 [libraries]
 # Project

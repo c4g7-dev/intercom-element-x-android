@@ -20,4 +20,7 @@ sealed interface DeveloperSettingsEvent {
     data object OpenPushRules : DeveloperSettingsEvent
     data object DismissPushRulesError : DeveloperSettingsEvent
     data class CopyToClipboard(val text: String) : DeveloperSettingsEvent
+
+    /** InterCom: zip the log files and open the share sheet on them. */
+    data object ShareLogs : DeveloperSettingsEvent
 }

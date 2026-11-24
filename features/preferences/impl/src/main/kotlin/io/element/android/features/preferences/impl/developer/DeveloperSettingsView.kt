@@ -91,6 +91,7 @@ fun DeveloperSettingsView(
             onPushHistoryClick = onPushHistoryClick,
         )
         MarkAllRoomsAsReadCategory(state)
+        LogsCategory(onShareLogsClick = { state.eventSink(DeveloperSettingsEvent.ShareLogs) })
 
         if (state.isEnterpriseBuild) {
             PreferenceCategory(title = "Theme") {
@@ -218,6 +219,25 @@ private fun MarkAllRoomsAsReadCategory(state: DeveloperSettingsState) {
             onClick = {
                 state.eventSink(DeveloperSettingsEvent.MarkAllRoomsAsRead(needsConfirmation = true))
             },
+        )
+    }
+}
+
+@Composable
+private fun LogsCategory(
+    onShareLogsClick: () -> Unit,
+) {
+    PreferenceCategory(title = "Logs") {
+        ListItem(
+            content = { Text("Share logs") },
+            supportingContent = {
+                Text(
+                    text = "Zips the app's log files, tokens removed, and opens the share sheet. Nothing is uploaded.",
+                    style = ElementTheme.typography.fontBodySmRegular,
+                    color = ElementTheme.colors.textSecondary,
+                )
+            },
+            onClick = onShareLogsClick,
         )
     }
 }

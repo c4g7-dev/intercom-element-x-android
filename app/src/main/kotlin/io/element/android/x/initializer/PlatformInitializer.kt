@@ -13,6 +13,7 @@ import android.content.Context
 import android.system.Os
 import android.util.Log
 import androidx.startup.Initializer
+import io.element.android.features.rageshake.api.logs.LogcatMirrorTree
 import io.element.android.features.rageshake.api.logs.createWriteToFilesConfiguration
 import io.element.android.libraries.architecture.bindings
 import io.element.android.libraries.core.extensions.runCatchingExceptions
@@ -44,8 +45,14 @@ class PlatformInitializer : Initializer<Unit> {
         val preferencesStore = appBindings.preferencesStore()
         val featureFlagService = appBindings.featureFlagService()
         val logLevel = runBlocking { preferencesStore.getTracingLogLevelFlow().first() }
+        val writesToLogcat = runBlocking { featureFlagService.isFeatureEnabled(FeatureFlags.PrintLogsToLogcat) }
+        // InterCom: with everything going to the log files only (a release build), calls and warnings are still
+        // mirrored to logcat, redacted, so that a failing call can be followed with adb. See LogcatMirrorTree.
+        if (!writesToLogcat) {
+            Timber.plant(LogcatMirrorTree())
+        }
         val tracingConfiguration = TracingConfiguration(
-            writesToLogcat = runBlocking { featureFlagService.isFeatureEnabled(FeatureFlags.PrintLogsToLogcat) },
+            writesToLogcat = writesToLogcat,
             writesToFilesConfiguration = bugReporter.createWriteToFilesConfiguration(),
             logLevel = logLevel,
             extraTargets = listOf(ELEMENT_X_TARGET),
