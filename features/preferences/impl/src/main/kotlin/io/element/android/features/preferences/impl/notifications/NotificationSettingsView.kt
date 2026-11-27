@@ -450,7 +450,7 @@ private fun MessageSoundDialog(state: NotificationSettingsState) {
 }
 
 /** InterCom: the name of its own ringtone. Not translated, like the app's other own strings. */
-internal const val INTERCOM_RINGTONE_NAME = "InterCom ringtone"
+internal const val INTERCOM_RINGTONE_NAME = "Lattice ringtone"
 
 @Composable
 private fun CallRingtoneDialog(state: NotificationSettingsState) {

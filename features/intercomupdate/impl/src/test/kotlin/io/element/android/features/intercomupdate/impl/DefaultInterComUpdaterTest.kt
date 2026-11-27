@@ -655,6 +655,6 @@ class DefaultInterComUpdaterTest {
 
     private companion object {
         const val NEW = "26.11.1-intercom.4"
-        const val MANIFEST_URL = "${ReleaseSelector.DOWNLOAD_PREFIX}android-v$NEW/android-update.json"
+        val MANIFEST_URL = "${ReleaseSelector.DOWNLOAD_PREFIXES.first()}android-v$NEW/android-update.json"
     }
 }

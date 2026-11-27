@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lattice: the icon of the splash screen, the loading animation of the icon set (design/lattice-icons/lattice-loading.svg
+  in the InterCom repository): the three bars rise and fall, between the two rows of dots. Android 12 and newer play
+  it; older versions show its first frame. Drawn at 0.7 of the icon's size, inside the circle the system leaves of a
+  splash icon. Original artwork.
+-->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="288dp"
+            android:height="288dp"
+            android:viewportWidth="512"
+            android:viewportHeight="512">
+            <group
+                android:pivotX="256"
+                android:pivotY="256"
+                android:scaleX="0.7"
+                android:scaleY="0.7">
+                <path
+                    android:fillAlpha="0.4"
+                    android:fillColor="@color/splash_bar_side"
+                    android:pathData="M134,132a22,22 0,1 0,44 0a22,22 0,1 0,-44 0z M234,132a22,22 0,1 0,44 0a22,22 0,1 0,-44 0z M334,132a22,22 0,1 0,44 0a22,22 0,1 0,-44 0z M134,380a22,22 0,1 0,44 0a22,22 0,1 0,-44 0z M234,380a22,22 0,1 0,44 0a22,22 0,1 0,-44 0z M334,380a22,22 0,1 0,44 0a22,22 0,1 0,-44 0z" />
+                <group
+                    android:name="bar1"
+                    android:pivotX="156"
+                    android:pivotY="256"
+                    android:scaleY="0.45">
+                    <path
+                        android:fillColor="@color/splash_bar_side"
+                        android:pathData="M134,218a22,22 0,0 1,44 0v76a22,22 0,0 1,-44 0z" />
+                </group>
+                <group
+                    android:name="bar2"
+                    android:pivotX="256"
+                    android:pivotY="256"
+                    android:scaleY="0.45">
+                    <path
+                        android:fillColor="@color/splash_bar_middle"
+                        android:pathData="M234,198a22,22 0,0 1,44 0v116a22,22 0,0 1,-44 0z" />
+                </group>
+                <group
+                    android:name="bar3"
+                    android:pivotX="356"
+                    android:pivotY="256"
+                    android:scaleY="0.45">
+                    <path
+                        android:fillColor="@color/splash_bar_side"
+                        android:pathData="M334,208a22,22 0,0 1,44 0v96a22,22 0,0 1,-44 0z" />
+                </group>
+            </group>
+        </vector>
+    </aapt:attr>
+    <target android:name="bar1">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="550"
+                android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="scaleY"
+                android:repeatCount="infinite"
+                android:repeatMode="reverse"
+                android:startOffset="0"
+                android:valueFrom="0.45"
+                android:valueTo="1"
+                android:valueType="floatType" />
+        </aapt:attr>
+    </target>
+    <target android:name="bar2">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="550"
+                android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="scaleY"
+                android:repeatCount="infinite"
+                android:repeatMode="reverse"
+                android:startOffset="180"
+                android:valueFrom="0.45"
+                android:valueTo="1"
+                android:valueType="floatType" />
+        </aapt:attr>
+    </target>
+    <target android:name="bar3">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="550"
+                android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="scaleY"
+                android:repeatCount="infinite"
+                android:repeatMode="reverse"
+                android:startOffset="360"
+                android:valueFrom="0.45"
+                android:valueTo="1"
+                android:valueType="floatType" />
+        </aapt:attr>
+    </target>
+</animated-vector>

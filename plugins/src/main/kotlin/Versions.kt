@@ -64,7 +64,7 @@ object Versions {
      * revision installs over the one before it; above 79 the code would reach the next upstream version's. The
      * revision is the same as the desktop release's of the same round. Back to 1 with each new upstream version.
      */
-    const val INTERCOM_REVISION = 14
+    const val INTERCOM_REVISION = 15
     val VERSION_NAME = "$versionYear.${versionMonth.toString().padStart(2, '0')}.$versionReleaseNumber-intercom.$INTERCOM_REVISION"
 
     /**

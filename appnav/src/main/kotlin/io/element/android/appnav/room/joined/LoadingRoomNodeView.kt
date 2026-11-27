@@ -20,9 +20,9 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.designsystem.components.button.BackButton
+import io.element.android.libraries.designsystem.components.lattice.LatticeLoadingIndicator
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
@@ -59,7 +59,8 @@ fun LoadingRoomNodeView(
                     )
                 } else {
                     DelayedVisibility {
-                        CircularProgressIndicator()
+                        // Lattice: the app's own loading animation, the bars alone at this size.
+                        LatticeLoadingIndicator(size = 40.dp, showDots = false)
                     }
                 }
             }

@@ -12,13 +12,18 @@ import android.content.Intent
 import android.os.Parcelable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.navigation.NavElements
 import com.bumble.appyx.core.navigation.NavKey
 import com.bumble.appyx.core.node.Node
+import com.bumble.appyx.core.node.node
 import com.bumble.appyx.core.plugin.Plugin
 import com.bumble.appyx.core.state.MutableSavedStateMap
 import com.bumble.appyx.core.state.SavedStateMap
@@ -46,6 +51,7 @@ import io.element.android.appnav.verification.IncomingVerificationRequestObserve
 import io.element.android.appnav.verification.OtherSessionIncomingVerificationNode
 import io.element.android.appnav.verification.OtherSessionVerificationNode
 import io.element.android.features.announcement.api.AnnouncementService
+import io.element.android.features.callnative.api.NativeCallAloneNotice
 import io.element.android.features.intercomupdate.api.InterComUpdatePrompt
 import io.element.android.features.login.api.LoginParams
 import io.element.android.features.login.api.accesscontrol.AccountProviderAccessControl
@@ -61,6 +67,7 @@ import io.element.android.libraries.architecture.createNode
 import io.element.android.libraries.architecture.waitForChildAttached
 import io.element.android.libraries.core.coroutine.withPreviousValue
 import io.element.android.libraries.deeplink.api.DeeplinkData
+import io.element.android.libraries.designsystem.components.lattice.LatticeLoadingIndicator
 import io.element.android.libraries.di.annotations.AppCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
@@ -115,6 +122,7 @@ class RootFlowNode(
     private val featureFlagService: FeatureFlagService,
     private val announcementService: AnnouncementService,
     private val interComUpdatePrompt: InterComUpdatePrompt,
+    private val nativeCallAloneNotice: NativeCallAloneNotice,
     private val analyticsService: AnalyticsService,
     private val analyticsColdStartWatcher: AnalyticsColdStartWatcher,
     private val incomingVerificationRequestObserver: IncomingVerificationRequestObserver,
@@ -366,6 +374,8 @@ class RootFlowNode(
             announcementService.Render(Modifier)
             // InterCom: "<version> is available" when the app is opened.
             interComUpdatePrompt.Render(Modifier)
+            // InterCom: "You were disconnected because you were alone in the call", after the call screen closed.
+            nativeCallAloneNotice.Render(Modifier)
         }
     }
 
@@ -463,7 +473,12 @@ class RootFlowNode(
                     ),
                 )
             }
-            NavTarget.SplashScreen -> emptyNode(buildContext)
+            // Lattice: the app's loading animation while the session is restored, where there was an empty screen.
+            NavTarget.SplashScreen -> node(buildContext) { modifier ->
+                Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    LatticeLoadingIndicator(size = 96.dp)
+                }
+            }
             is NavTarget.OtherAccountIncomingVerificationRequest -> {
                 if (matrixSessionCache.getOrNull(navTarget.sessionId) == null) {
                     Timber.w("Couldn't find session ${navTarget.sessionId} for the incoming verification request")

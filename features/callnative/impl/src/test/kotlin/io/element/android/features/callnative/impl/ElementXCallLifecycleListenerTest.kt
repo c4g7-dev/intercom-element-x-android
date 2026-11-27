@@ -80,16 +80,36 @@ class ElementXCallLifecycleListenerTest {
         assertThat(ringingCallTracker.ended).isEmpty()
     }
 
+    @Test
+    fun `a call left for being alone in it is said, and no other end is`() = runTest {
+        val notice = DefaultNativeCallAloneNotice()
+        val listener = createListener(onDisconnectedAlone = notice::onDisconnectedAlone)
+
+        ElementCallEndReason.entries.filter { it != ElementCallEndReason.ALONE }.forEach { listener.onCallEnded(A_CALL, it) }
+        runCurrent()
+        assertThat(notice.isPending.value).isFalse()
+
+        listener.onCallEnded(A_CALL, ElementCallEndReason.ALONE)
+        runCurrent()
+        assertThat(notice.isPending.value).isTrue()
+        assertThat(DefaultNativeCallAloneNotice.MESSAGE).isEqualTo("You were disconnected because you were alone in the call.")
+
+        notice.dismiss()
+        assertThat(notice.isPending.value).isFalse()
+    }
+
     private fun TestScope.createListener(
         currentCallTracker: FakeCurrentCallTracker = FakeCurrentCallTracker(),
         ringingCallTracker: FakeRingingCallTracker = FakeRingingCallTracker(),
         appForegroundStateService: FakeAppForegroundStateService = FakeAppForegroundStateService(),
+        onDisconnectedAlone: () -> Unit = {},
     ) = ElementXCallLifecycleListener(
         sessionId = A_SESSION_ID,
         currentCallTracker = currentCallTracker,
         ringingCallTracker = ringingCallTracker,
         sessionCoroutineScope = this,
         appForegroundStateService = appForegroundStateService,
+        onDisconnectedAlone = onDisconnectedAlone,
     )
 
     private companion object {

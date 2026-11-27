@@ -129,10 +129,12 @@ class DefaultReleaseSource(
     }
 
     private fun requireReleaseUrl(url: String) {
-        if (!url.startsWith(ReleaseSelector.DOWNLOAD_PREFIX)) throw IOException("Not a file of an InterCom release: $url")
+        if (!ReleaseSelector.isReleaseUrl(url)) throw IOException("Not a file of a Lattice release: $url")
     }
 
     companion object {
+        // Under the repository's name from before the app was called Lattice, see ReleaseSelector.DOWNLOAD_PREFIXES.
+        // Should it be renamed one day, GitHub redirects this address, and the redirect is followed.
         const val RELEASES_URL = "https://api.github.com/repos/c4g7-dev/InterCom/releases?per_page=30"
         private const val HTTP_NOT_MODIFIED = 304
         private const val MAX_TEXT_BYTES = 2L * 1024 * 1024

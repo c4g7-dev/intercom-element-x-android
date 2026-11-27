@@ -9,7 +9,9 @@
 
     <style name="Theme.ElementX.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splashscreen_bg_dark</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/transparent</item>
+        <!-- Lattice: the loading animation of the icon; the duration is the most the system plays. -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_lattice</item>
+        <item name="windowSplashScreenAnimationDuration">1000</item>
         <item name="postSplashScreenTheme">@style/Theme.ElementX</item>
         <item name="android:windowBackground">@color/splashscreen_bg_dark</item>
         <item name="android:statusBarColor">@color/splashscreen_bg_dark</item>

@@ -1,18 +1,16 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="32dp"
-    android:height="32dp"
-    android:viewportWidth="1024"
-    android:viewportHeight="1024">
-    <!-- InterCom glyph: a speech bubble carrying a voice waveform. Original artwork, CC0. -->
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <!-- Lattice glyph for the status bar: the three bars of the icon, without its tile and dots. Original artwork. -->
     <group
-        android:pivotX="512"
-        android:pivotY="522"
-        android:scaleX="1.45"
-        android:scaleY="1.45"
-        android:translateY="-10">
+        android:pivotX="32"
+        android:pivotY="32"
+        android:scaleX="1.4"
+        android:scaleY="1.4">
         <path
             android:fillColor="#000000"
-            android:fillType="evenOdd"
-            android:pathData="M296 232h432c61.9 0 112 50.1 112 112v248c0 61.9-50.1 112-112 112H468L330.6 812.9c-18.3 14.5-45.4 1.5-45.4-21.9V703.300C227.800 698 184 649.800 184 592V344c0-61.900 50.100-112 112-112zM344 424a28 28 0 0 1 28 28v32a28 28 0 0 1 -56 0v-32a28 28 0 0 1 28 -28zM440 364a28 28 0 0 1 28 28v152a28 28 0 0 1 -56 0v-152a28 28 0 0 1 28 -28zM536 316a28 28 0 0 1 28 28v248a28 28 0 0 1 -56 0v-248a28 28 0 0 1 28 -28zM632 380a28 28 0 0 1 28 28v120a28 28 0 0 1 -56 0v-120a28 28 0 0 1 28 -28zM728 432a28 28 0 0 1 28 28v16a28 28 0 0 1 -56 0v-16a28 28 0 0 1 28 -28z" />
+            android:pathData="M14,28a4,4 0,0 1,8 0v8a4,4 0,0 1,-8 0zM28,20a4,4 0,0 1,8 0v24a4,4 0,0 1,-8 0zM42,25a4,4 0,0 1,8 0v14a4,4 0,0 1,-8 0z" />
     </group>
 </vector>

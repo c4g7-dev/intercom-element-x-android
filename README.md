@@ -1,21 +1,32 @@
 > [!IMPORTANT]
-> **This is InterCom for Android, an independent fork based on Element X Android.**
+> **This is Lattice for Android (called InterCom for Android up to 26.11.1-intercom.14), an independent fork based on
+> Element X Android.**
 > It is not an Element product and is not affiliated with, endorsed by or supported by Element.
 > Please report problems with this fork at <https://github.com/c4g7-dev/InterCom/issues>, not upstream.
-> Everything below the "InterCom for Android" section is the upstream README, kept for reference.
+> Everything below the "Lattice for Android" section is the upstream README, kept for reference.
 
-# InterCom for Android
+# Lattice for Android
 
-The Android companion of [InterCom](https://github.com/c4g7-dev/InterCom), built from the `intercom` branch of
-this repository. Downloads are on the [InterCom releases page](https://github.com/c4g7-dev/InterCom/releases).
+The Android companion of [Lattice](https://github.com/c4g7-dev/InterCom), built from the `intercom` branch of
+this repository. Downloads are on the [releases page](https://github.com/c4g7-dev/InterCom/releases).
+
+The app was called InterCom until 26.11.1-intercom.14. Only what is seen was renamed: the application id, the
+OAuth redirect scheme, the branch, the version's format (`-intercom.<n>`), the names in the code and the main
+repository (`c4g7-dev/InterCom`) are as they were, so 26.11.1-intercom.15 installs over an InterCom and keeps its
+accounts and data.
 
 What differs from upstream Element X Android:
 
 - Own name, icon and application id (`com.c4g7.intercom.android`): installs next to Element X, shares no data with it.
+  The icon, the status bar glyph, the splash screen and the logo of the first screens are Lattice's (three bars
+  between two rows of dots; `appicon/element`, `app/src/main/res/drawable/splash_lattice.xml`).
+- **Lattice's loading animation** (`libraries/designsystem/…/components/lattice/LatticeLoadingIndicator.kt`): on the
+  splash screen (Android 12 or newer animate it), while the session is restored, where there was an empty screen,
+  and while a room loads. It stands still with Android's animations turned off.
 - Calls use the native MatrixRTC stack by default instead of the Element Call WebView, with **screen sharing** enabled
   (the WebView cannot share the screen). It can be switched back in the developer options ("Native calls").
-  The stack is InterCom's fork of element-call-android,
-  [intercom-element-call-android](https://github.com/c4g7-dev/intercom-element-call-android), which adds:
+  The stack is Lattice's fork of element-call-android,
+  [lattice-element-call-android](https://github.com/c4g7-dev/lattice-element-call-android), which adds:
   - the **phone's audio** in a screen share ("Share phone audio" in the sheet the share button opens, on by default;
     Android 10 or newer; apps that forbid capture, and calls, are silent in it), sent for **music**: stereo Opus at
     160 kbit/s (128 or 192 in the same sheet), every frame sent;
@@ -23,7 +34,13 @@ What differs from upstream Element X Android:
   - a **volume for every tile**: press and hold somebody's tile for a slider from 0 to 200 % and a mute, for their
     voice and separately for their shared screen's audio. Only this phone hears it, and it is remembered per person;
   - screen shares at the screen's **own resolution up to 1440p**, 30 or 15 fps, one layer, up to 10 Mbit/s;
-  - an **equal grid** layout (call settings → Preferences → Layout): every tile the same size, shared screens shown whole.
+  - an **equal grid** layout (call settings → Preferences → Layout): every tile the same size, shared screens shown whole;
+  - **alone in a call of a direct chat, the call goes on for five minutes** with a countdown, *Stay* and *Leave
+    now*, where upstream ends it the moment the other person leaves (`ElementCallOptions.aloneTimeout`, set in
+    `features/callnative/…/ElementCallControllers.kt`). Left for being alone, the app says so afterwards
+    (`DefaultNativeCallAloneNotice`). A room's call is never left this way;
+  - a **camera that cannot be used** is drawn as such: a no-entry badge on the camera button when its permission
+    was refused (a tap asks again, or leads to the settings) or the phone has none.
 - OAuth client metadata for Matrix Authentication Service: redirect scheme `com.c4g7.intercom.android:/` with
   client URI `https://c4g7.com` (MAS requires the scheme to be the reversed host of the client URI).
   Change both in `plugins/src/main/kotlin/config/BuildTimeConfig.kt` when building for another domain.
@@ -33,7 +50,7 @@ What differs from upstream Element X Android:
   as [ntfy](https://ntfy.sh/) must be installed on the phone.
 - Element's `https://*.element.io` app links are not claimed.
 - **Updates itself** from the [InterCom releases](https://github.com/c4g7-dev/InterCom/releases)
-  (`features/intercomupdate`, Settings → InterCom updates). While the app is on screen it looks at the releases
+  (`features/intercomupdate`, Settings → Lattice updates). While the app is on screen it looks at the releases
   feed (`releases.atom`, with the ETag of its last answer): when the app comes to the screen or the network returns
   (once a minute at most) and every half hour. Only when the feed's `android-v…` entries changed does it ask the
   GitHub API for the releases (and every six hours whatever the feed says), because the API allows an address
@@ -47,15 +64,20 @@ What differs from upstream Element X Android:
     with an **Update available** row.
   - The dialog shows **what is new**: the notes of the release and of every release between it and the running
     one, newest first, drawn as text and lists (HTML is taken out, pictures are not loaded, a link is its text).
-    After an update the app shows "What's new in InterCom <version>" once; "Show what's new after updates" in the
+    After an update the app shows "What's new in Lattice <version>" once; "Show what's new after updates" in the
     updater's settings turns that off.
   - When Android does not install the update, the app says what can be done: on Samsung phones that **Auto
     Blocker** may be blocking app installs (with a button to the security settings), otherwise about storage, an
     unsupported device or another build being installed. The installer's status code is written to the app's log.
-  - The release's side of it is `tools/android-release.sh` and `docs/BUILDING.md` of the InterCom repository. A
-    build for another repository or application id changes `ReleaseSelector.DOWNLOAD_PREFIX`,
+  - The release's side of it is `tools/android-release.sh` and `docs/BUILDING.md` of the main repository. A
+    build for another repository or application id changes `ReleaseSelector.DOWNLOAD_PREFIXES`,
     `DefaultReleaseSource.RELEASES_URL` and `ReleaseFeed.URL`; a debug build does not update itself.
-- **InterCom's look**: the near-black neutral surfaces, hairlines and single accent (`#6875f5`) of the desktop app,
+  - A release carries the APK twice, as `Lattice-Android-…` and as `InterCom-Android-…`: 26.11.1-intercom.14 and
+    older take a release only with the second name, with `android-update.json` naming it, and only from below
+    `https://github.com/c4g7-dev/InterCom/releases/download/`. GitHub's API names a renamed repository's files by
+    its new name, so the main repository keeps its name until those versions are gone; from 26.11.1-intercom.15
+    on the app also accepts `c4g7-dev/Lattice`, and either name of the APK.
+- **Lattice's look**: the near-black neutral surfaces, hairlines and single accent (`#6875f5`) of the desktop app,
   and a light variant, as Compound semantic colours (`libraries/compound/…/theme/InterComPalette.kt`) that every
   component reads; corners of 6, 8, 12 and 16 dp. Green stays for "success", red for "critical".
 - **Pictures sent together are one gallery**, as on the desktop: consecutive picture messages of one sender,
@@ -67,17 +89,17 @@ What differs from upstream Element X Android:
   button are centred on the field's one line of text and stay on its last line when it grows, whatever the size of
   the font or the height of the device's font (`libraries/textcomposer/…/ComposerMetrics.kt`); upstream lifts them
   by a fixed 5 dp, which fits the default font only.
-- **InterCom's own ringtone** for incoming calls (Settings → Notifications → Call ringtone; "System default" and
-  any other tone can be chosen instead). It is InterCom's own sound, worked out from sine waves by
+- **Lattice's own ringtone** for incoming calls (Settings → Notifications → Call ringtone; "System default" and
+  any other tone can be chosen instead). It is Lattice's own sound, worked out from sine waves by
   `apps/desktop/intercom/gen-sounds.py` of the web fork, no recording and taken from no other product.
 - The version is `<Element X version>-intercom.<n>` with the same `<n>` as the desktop release of the round
   (`INTERCOM_REVISION` in `plugins/src/main/kotlin/Versions.kt`, 1 to 79), and the version code adds `<n>` after
-  the ABI digit: 2026110134 for 26.11.1-intercom.14.
+  the ABI digit: 2026110135 for 26.11.1-intercom.15.
 
 Known limitations:
 
-- arm64-v8a phones only (every phone of the last years): the RTC core is InterCom's own build of
-  [intercom-matrix-rust-rtc](https://github.com/c4g7-dev/intercom-matrix-rust-rtc), made for that one ABI.
+- arm64-v8a phones only (every phone of the last years): the RTC core is Lattice's own build of
+  [lattice-matrix-rust-rtc](https://github.com/c4g7-dev/lattice-matrix-rust-rtc), made for that one ABI.
 - A shared screen's audio is played as part of the call, so it follows the call's output. Over a Bluetooth headset
   that means the headset's call mode, which is mono and narrow; on the speaker, the earpiece and wired headphones it
   is as it was sent.
@@ -93,21 +115,21 @@ to the local Maven repository (`~/.m2`) first; `gradle/libs.versions.toml` (`ele
 expected there, and the library names the core's:
 
 ```sh
-git clone -b intercom https://github.com/c4g7-dev/intercom-matrix-rust-rtc.git
-(cd intercom-matrix-rust-rtc && scripts/build-intercom-android.sh)
-git clone -b intercom https://github.com/c4g7-dev/intercom-element-call-android.git
-(cd intercom-element-call-android && ./gradlew publishToMavenLocal)
+git clone -b intercom https://github.com/c4g7-dev/lattice-matrix-rust-rtc.git
+(cd lattice-matrix-rust-rtc && scripts/build-intercom-android.sh)
+git clone -b intercom https://github.com/c4g7-dev/lattice-element-call-android.git
+(cd lattice-element-call-android && ./gradlew publishToMavenLocal)
 ./gradlew :app:assembleFdroidRelease
 ```
 
-In the [InterCom](https://github.com/c4g7-dev/InterCom) repository the three are submodules, `matrix-rust-rtc`,
+In the [main](https://github.com/c4g7-dev/InterCom) repository the three are submodules, `matrix-rust-rtc`,
 `element-call-android` and `element-x-android`; its `docs/BUILDING.md` has the details.
 
 The release build is signed with the key given by the environment variables `INTERCOM_ANDROID_STOREFILE`,
 `INTERCOM_ANDROID_STOREPASSWORD`, `INTERCOM_ANDROID_KEYALIAS` and `INTERCOM_ANDROID_KEYPASSWORD`, and with the
 debug key when they are not set. The APKs are written to `app/build/outputs/apk/fdroid/release/`.
 
-InterCom for Android is free software under the [AGPL-3.0](LICENSE), like the code it is based on, which is
+Lattice for Android is free software under the [AGPL-3.0](LICENSE), like the code it is based on, which is
 copyright New Vector Ltd and Element Creations Ltd. "Element" is a trademark of New Vector Ltd.
 
 ---

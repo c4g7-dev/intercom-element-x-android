@@ -32,6 +32,7 @@ import io.element.android.appnav.session.FakeSyncOrchestratorFactory
 import io.element.android.appnav.session.MatrixSessionCache
 import io.element.android.appnav.verification.IncomingVerificationRequestObserver
 import io.element.android.features.announcement.test.FakeAnnouncementService
+import io.element.android.features.callnative.api.NativeCallAloneNotice
 import io.element.android.features.intercomupdate.api.InterComUpdatePrompt
 import io.element.android.features.login.api.LoginEntryPoint
 import io.element.android.features.login.api.LoginParams
@@ -369,6 +370,10 @@ class RootFlowNodeTest : RobolectricTest() {
             featureFlagService = featureFlagService,
             announcementService = FakeAnnouncementService(),
             interComUpdatePrompt = object : InterComUpdatePrompt {
+                @Composable
+                override fun Render(modifier: Modifier) = Unit
+            },
+            nativeCallAloneNotice = object : NativeCallAloneNotice {
                 @Composable
                 override fun Render(modifier: Modifier) = Unit
             },

@@ -96,7 +96,7 @@ fun PreferencesRootView(
             state.interComUpdateVersion?.let { version ->
                 ListItem(
                     content = { Text("Update available") },
-                    supportingContent = { Text("InterCom $version") },
+                    supportingContent = { Text("Lattice $version") },
                     leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Download())),
                     trailingContent = ListItemContent.Badge,
                     onClick = onOpenInterComUpdate,
@@ -289,7 +289,7 @@ private fun ColumnScope.GeneralSection(
     }
     // InterCom: the updater. Not translated, as the attribution in "About".
     ListItem(
-        content = { Text("InterCom updates") },
+        content = { Text("Lattice updates") },
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Download())),
         trailingContent = if (state.isInterComUpdateAvailable) ListItemContent.Badge else null,
         onClick = onOpenInterComUpdate,

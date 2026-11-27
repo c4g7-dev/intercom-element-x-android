@@ -97,6 +97,7 @@ class DefaultElementCallControllers(
     private val appForegroundStateService: AppForegroundStateService,
     private val appPreferencesStore: AppPreferencesStore,
     private val featureFlagService: FeatureFlagService,
+    private val aloneNotice: DefaultNativeCallAloneNotice,
 ) : ElementCallControllers {
     // A flow rather than a plain map because what draws the call has to see the stack appear.
     private val stacks = MutableStateFlow<Map<SessionId, ElementCallStack>>(emptyMap())
@@ -142,6 +143,7 @@ class DefaultElementCallControllers(
                     ringingCallTracker = ringingCallTracker,
                     sessionCoroutineScope = client.sessionCoroutineScope,
                     appForegroundStateService = appForegroundStateService,
+                    onDisconnectedAlone = aloneNotice::onDisconnectedAlone,
                 )
             )
             .roomContext(ElementXRoomContextProvider(client))
@@ -161,6 +163,8 @@ class DefaultElementCallControllers(
         ),
         // InterCom: goes with the `mediaProjection` foreground service type merged in the app manifest.
         isScreenSharingEnabled = true,
+        // InterCom: alone in a call of a direct chat, stay for five minutes with a countdown before it is left.
+        aloneTimeout = DefaultNativeCallAloneNotice.ALONE_TIMEOUT,
     )
 
     /**

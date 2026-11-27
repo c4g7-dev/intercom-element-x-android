@@ -10,7 +10,7 @@ package config
 
 object BuildTimeConfig {
     const val APPLICATION_ID = "com.c4g7.intercom.android"
-    const val APPLICATION_NAME = "InterCom"
+    const val APPLICATION_NAME = "Lattice"
     // InterCom: MAS requires the custom redirect scheme to be the reversed host of URL_WEBSITE (client_uri).
     val METADATA_HOST_REVERSED: String? = "com.c4g7.intercom.android"
     val OAUTH_CLIENT_URL_PATH: String? = null

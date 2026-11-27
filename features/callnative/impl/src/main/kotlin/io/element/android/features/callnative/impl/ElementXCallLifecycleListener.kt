@@ -35,6 +35,8 @@ class ElementXCallLifecycleListener(
     private val ringingCallTracker: RingingCallTracker,
     private val sessionCoroutineScope: CoroutineScope,
     private val appForegroundStateService: AppForegroundStateService,
+    /** InterCom: the call was left for the user because they were alone in it; they are told why it is gone. */
+    private val onDisconnectedAlone: () -> Unit = {},
 ) : ElementCallLifecycleListener {
     override val isAppInForeground: Flow<Boolean> = appForegroundStateService.isInForeground
 
@@ -54,6 +56,7 @@ class ElementXCallLifecycleListener(
 
     override fun onCallEnded(callData: ElementCallData?, reason: ElementCallEndReason) {
         Timber.i("Native call ended: $reason")
+        if (reason == ElementCallEndReason.ALONE) onDisconnectedAlone()
         currentCallTracker.onCallEnded()
         appForegroundStateService.updateIsInCallState(false)
         callData?.let { sessionCoroutineScope.launch { ringingCallTracker.onCallEnded(it.toCallData()) } }

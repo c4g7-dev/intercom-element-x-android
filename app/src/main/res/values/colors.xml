@@ -7,7 +7,10 @@
   -->
 <resources>
     <!-- Must be equal to DarkColorTokens.colorThemeBg -->
-    <color name="splashscreen_bg_dark">#FF101317</color>
+    <color name="splashscreen_bg_dark">#FF101013</color>
     <!-- Must be equal to LightColorTokens.colorThemeBg -->
     <color name="splashscreen_bg_light">#FFFFFFFF</color>
+    <!-- Lattice: the middle bar of the splash icon, dark on the light splash and light on the dark one. -->
+    <color name="splash_bar_middle">#FF101013</color>
+    <color name="splash_bar_side">#FF4F5BD5</color>
 </resources>

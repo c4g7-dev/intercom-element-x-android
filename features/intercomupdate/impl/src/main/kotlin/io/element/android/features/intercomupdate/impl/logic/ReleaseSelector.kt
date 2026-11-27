@@ -11,9 +11,12 @@ package io.element.android.features.intercomupdate.impl.logic
 data class SelectedRelease(
     val version: InterComVersion,
     val release: GitHubRelease,
+    /** The APK under the name this version prefers, `Lattice-Android-…` where the release has it. */
     val apk: GitHubAsset,
     val manifest: GitHubAsset?,
     val sha256Sums: GitHubAsset?,
+    /** The same APK under its other names in the release, see [ReleaseSelector.apkNames]. */
+    val otherApks: List<GitHubAsset> = emptyList(),
 )
 
 object ReleaseSelector {
@@ -21,8 +24,20 @@ object ReleaseSelector {
     const val SHA256SUMS_NAME = "SHA256SUMS"
     const val ABI = "arm64-v8a"
 
-    /** Every file of a release is downloaded from below this, and from nowhere else. */
-    const val DOWNLOAD_PREFIX = "https://github.com/c4g7-dev/InterCom/releases/download/"
+    /**
+     * Every file of a release is downloaded from below one of these, and from nowhere else. The releases are in
+     * `c4g7-dev/InterCom`, the repository's name from before the app was called Lattice. It keeps that name because
+     * 26.11.1-intercom.14 and older accept nothing but its prefix, and GitHub's API names a renamed repository by its
+     * new name in every download address: they would find no release again. `c4g7-dev/Lattice` is accepted from
+     * 26.11.1-intercom.15 on, so that the repository can be renamed once nobody runs an older version.
+     */
+    val DOWNLOAD_PREFIXES = listOf(
+        "https://github.com/c4g7-dev/InterCom/releases/download/",
+        "https://github.com/c4g7-dev/Lattice/releases/download/",
+    )
+
+    /** Whether [url] is a file of a release of this app. */
+    fun isReleaseUrl(url: String): Boolean = DOWNLOAD_PREFIXES.any { url.startsWith(it) }
 
     /**
      * The newest release of InterCom for Android that is newer than [currentVersionCode], or null.
@@ -45,12 +60,13 @@ object ReleaseSelector {
     }
 
     private fun toSelected(version: InterComVersion, release: GitHubRelease): SelectedRelease? {
-        val assets = release.assets.filter { it.downloadUrl.startsWith(DOWNLOAD_PREFIX) }
-        val apk = assets.firstOrNull { it.name == apkName(version) } ?: return null
+        val assets = release.assets.filter { isReleaseUrl(it.downloadUrl) }
+        val apks = apkNames(version).mapNotNull { name -> assets.firstOrNull { it.name == name } }
+        val apk = apks.firstOrNull() ?: return null
         val manifest = assets.firstOrNull { it.name == MANIFEST_NAME }
         val sums = assets.firstOrNull { it.name == SHA256SUMS_NAME }
         if (manifest == null && sums == null) return null
-        return SelectedRelease(version, release, apk, manifest, sums)
+        return SelectedRelease(version, release, apk, manifest, sums, otherApks = apks.drop(1))
     }
 
     /**
@@ -79,7 +95,15 @@ object ReleaseSelector {
     const val MAX_NOTES = 8
     const val MAX_NOTE_LENGTH = 6000
 
-    fun apkName(version: InterComVersion) = "InterCom-Android-${version.name}-$ABI.apk"
+    /**
+     * The names a release's APK may have, the preferred first. A release from 26.11.1-intercom.15 on carries the same
+     * file under both: `Lattice-Android-…`, and `InterCom-Android-…`, the only name 26.11.1-intercom.14 and older
+     * look for, which is also the one its `android-update.json` states. Older releases have the second alone.
+     */
+    fun apkNames(version: InterComVersion) = listOf(
+        "Lattice-Android-${version.name}-$ABI.apk",
+        "InterCom-Android-${version.name}-$ABI.apk",
+    )
 
     /**
      * Joins a selected release with its [manifest] (preferred) or the text of its `SHA256SUMS`.
@@ -93,13 +117,17 @@ object ReleaseSelector {
         packageName: String,
         currentVersionCode: Long,
     ): UpdateCandidate {
-        val apk = selected.apk
+        val apks = listOf(selected.apk) + selected.otherApks
+        val apk: GitHubAsset
         val versionCode: Long
         val sha256: String
         if (manifest != null) {
             require(manifest.schema == 1) { "android-update.json has schema ${manifest.schema}, this version reads 1" }
             require(manifest.packageName == packageName) { "android-update.json is for ${manifest.packageName}" }
-            require(manifest.apk == apk.name) { "android-update.json names ${manifest.apk}, the release has ${apk.name}" }
+            // The file the manifest names is the one its size and checksum are of, so that one is downloaded.
+            apk = requireNotNull(apks.firstOrNull { it.name == manifest.apk }) {
+                "android-update.json names ${manifest.apk}, the release has ${apks.joinToString { it.name }}"
+            }
             require(manifest.versionName == selected.version.name) {
                 "android-update.json is for ${manifest.versionName}, the tag for ${selected.version.name}"
             }
@@ -107,9 +135,10 @@ object ReleaseSelector {
             sha256 = manifest.sha256
         } else {
             versionCode = selected.version.versionCode()
-            sha256 = requireNotNull(sha256Sums?.let { Sha256.findInSums(it, apk.name) }) {
-                "SHA256SUMS has no line for ${apk.name}"
-            }
+            val listed = apks.firstNotNullOfOrNull { asset -> sha256Sums?.let { Sha256.findInSums(it, asset.name) }?.let { asset to it } }
+            val (listedApk, listedSha256) = requireNotNull(listed) { "SHA256SUMS has no line for ${selected.apk.name}" }
+            apk = listedApk
+            sha256 = listedSha256
         }
         require(versionCode > currentVersionCode) { "version code $versionCode is not newer than $currentVersionCode" }
         require(Sha256.isHex(sha256)) { "not a SHA-256: $sha256" }

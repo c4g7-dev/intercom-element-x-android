@@ -69,7 +69,7 @@ dependencyResolutionManagement {
             }
         }
 
-        // InterCom: element-call-android is the fork c4g7-dev/intercom-element-call-android, which is not on
+        // InterCom: element-call-android is the fork c4g7-dev/lattice-element-call-android, which is not on
         // Maven Central. Publish it from its checkout with `./gradlew publishToMavenLocal` (the version in
         // gradle/libs.versions.toml), or another build with `publishToMavenLocal -PVERSION_NAME=0.1.0-local`
         // and `-PelementCallLocalVersion=0.1.0-local` here. Only these five modules are looked up there.
@@ -82,7 +82,7 @@ dependencyResolutionManagement {
                     includeModule("io.element.android", "element-call")
                     includeModule("io.element.android", "element-call-ui")
                     includeModule("io.element.android", "element-call-test")
-                    // The RTC core the library depends on: InterCom's build of c4g7-dev/intercom-matrix-rust-rtc,
+                    // The RTC core the library depends on: InterCom's build of c4g7-dev/lattice-matrix-rust-rtc,
                     // published by that repository's scripts/build-intercom-android.sh.
                     includeModule("io.element.android", "matrix-rtc-android")
                 }

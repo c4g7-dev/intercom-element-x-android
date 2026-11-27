@@ -57,7 +57,7 @@ android {
         }
         manifestPlaceholders["elementMobileLinkPath"] = elementMobileLinkPath
 
-        // InterCom: arm64-v8a only. The call core is InterCom's own build (c4g7-dev/intercom-matrix-rust-rtc), made for
+        // InterCom: arm64-v8a only. The call core is InterCom's own build (c4g7-dev/lattice-matrix-rust-rtc), made for
         // that one ABI; an APK for another would install and then fail at its first call. The split below says so;
         // an ndk abiFilter beside it is refused by the Android plugin once there is no universal APK.
 
