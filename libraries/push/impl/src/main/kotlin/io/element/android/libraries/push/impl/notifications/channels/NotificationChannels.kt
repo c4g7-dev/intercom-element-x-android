@@ -127,11 +127,19 @@ class DefaultNotificationChannels(
             // Now `SystemDefault` means Android's system tone, so untouched legacy state would
             // silently flip sound. Promote it to `ElementDefault` once, gated on version==0 so the
             // migration is idempotent.
-            if (initial.messageSoundVersion == 0 && initial.messageSound == NotificationSound.SystemDefault) {
+            val withMessageSound = if (initial.messageSoundVersion == 0 && initial.messageSound == NotificationSound.SystemDefault) {
                 appPreferencesStore.setMessageSoundAndIncrementVersion(NotificationSound.ElementDefault, title = null)
                 appPreferencesStore.getNotificationSoundChannelConfig()
             } else {
                 initial
+            }
+            // InterCom: incoming calls ring with InterCom's own ringtone unless something else was chosen. Once,
+            // gated on version==0 like the migration above; "System default" stays a choice in the settings.
+            if (withMessageSound.callRingtoneVersion == 0 && withMessageSound.callRingtone == NotificationSound.SystemDefault) {
+                appPreferencesStore.setCallRingtoneAndIncrementVersion(NotificationSound.ElementDefault, title = null)
+                appPreferencesStore.getNotificationSoundChannelConfig()
+            } else {
+                withMessageSound
             }
         }
 
@@ -269,14 +277,18 @@ class DefaultNotificationChannels(
     private fun resolveRingingSoundUri(sound: NotificationSound): Uri? = when (sound) {
         NotificationSound.Silent -> null
         // The ringing channel has no bundled tone — treat ElementDefault and ElementFade like SystemDefault here.
+        // InterCom: the bundled tone of the ringing channel is InterCom's own ringtone.
+        NotificationSound.ElementDefault -> bundledRingtoneUri()
         NotificationSound.SystemDefault,
-        NotificationSound.ElementDefault,
         NotificationSound.ElementFade -> Settings.System.DEFAULT_RINGTONE_URI
         is NotificationSound.Custom -> parseUriOrFallback(sound.uri) { Settings.System.DEFAULT_RINGTONE_URI }
     }
 
     private fun bundledMessageSoundUri(): Uri =
         "${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/${R.raw.message}".toUri()
+
+    private fun bundledRingtoneUri(): Uri =
+        "${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/${R.raw.intercom_ringtone}".toUri()
 
     private fun bundledFadeSoundUri(): Uri =
         "${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/${R.raw.element_fade}".toUri()
@@ -376,7 +388,7 @@ class DefaultNotificationChannels(
     override suspend fun readRingingCallChannelSound(): NotificationSound? {
         return readChannelSound(
             channelId = currentRingingCallChannelId,
-            bundledUri = null,
+            bundledUri = bundledRingtoneUri(),
             bundledFadeUri = null,
             systemDefaultUri = Settings.System.DEFAULT_RINGTONE_URI,
         )

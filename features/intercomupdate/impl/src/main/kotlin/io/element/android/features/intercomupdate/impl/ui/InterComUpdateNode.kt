@@ -18,6 +18,7 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
 import io.element.android.features.intercomupdate.impl.install.openInstallPermissionSettings
+import io.element.android.features.intercomupdate.impl.install.openSettingsFor
 
 @ContributesNode(AppScope::class)
 @AssistedInject
@@ -37,6 +38,7 @@ class InterComUpdateNode(
             state = state,
             onBackClick = ::navigateUp,
             onAllowInstallClick = { context.openInstallPermissionSettings() },
+            onOpenHintSettings = { hint -> context.openSettingsFor(hint) },
             modifier = modifier,
         )
     }

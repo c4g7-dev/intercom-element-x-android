@@ -55,6 +55,8 @@ open class PreferencesRootStatePreviewParam : PreviewParameterProvider<Preferenc
                 showDeveloperSettings = true,
             ),
             aPreferencesRootState(userStatusState = aUserStatusState(pickerState = UserStatusPickerState.ShowingPicker)),
+            // InterCom: a newer release is known
+            aPreferencesRootState(isInterComUpdateAvailable = true, interComUpdateVersion = "26.11.1-intercom.14"),
             // Minimal state
             aPreferencesRootState(userStatusState = null),
             // Location sharing not available
@@ -98,6 +100,7 @@ fun aPreferencesRootState(
     showLabsItem: Boolean = false,
     showLocationSettings: Boolean = true,
     isInterComUpdateAvailable: Boolean = false,
+    interComUpdateVersion: String? = null,
     userStatusState: UserStatusState? = aUserStatusState(),
     snackbarMessage: SnackbarMessage? = null,
     eventSink: (PreferencesRootEvent) -> Unit = {},
@@ -112,6 +115,7 @@ fun aPreferencesRootState(
     otherSessions = otherSessions.toImmutableList(),
     showAnalyticsSettings = showAnalyticsSettings,
     isInterComUpdateAvailable = isInterComUpdateAvailable,
+    interComUpdateVersion = interComUpdateVersion,
     showDeveloperSettings = showDeveloperSettings,
     showLabsItem = showLabsItem,
     showLocationSettings = showLocationSettings,

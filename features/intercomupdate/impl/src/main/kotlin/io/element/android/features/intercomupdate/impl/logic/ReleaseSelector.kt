@@ -53,6 +53,32 @@ object ReleaseSelector {
         return SelectedRelease(version, release, apk, manifest, sums)
     }
 
+    /**
+     * The notes of the Android releases above [afterVersionCode] and up to [upToVersionCode], newest first: what an
+     * update from the one to the other brings. Releases without notes are left out, and at most [MAX_NOTES] are kept.
+     */
+    fun notes(
+        releases: List<GitHubRelease>,
+        afterVersionCode: Long,
+        upToVersionCode: Long,
+        includePrereleases: Boolean,
+    ): List<ReleaseNote> {
+        return releases
+            .asSequence()
+            .filter { !it.draft && (includePrereleases || !it.prerelease) }
+            .mapNotNull { release -> InterComVersion.parseTag(release.tagName)?.let { it to release } }
+            .filter { (version, _) -> version.versionCode() in afterVersionCode + 1..upToVersionCode }
+            .sortedByDescending { it.first }
+            .distinctBy { it.first }
+            .map { (version, release) -> ReleaseNote(version.name, version.versionCode(), release.body.orEmpty().take(MAX_NOTE_LENGTH)) }
+            .filter { it.notes.isNotBlank() }
+            .take(MAX_NOTES)
+            .toList()
+    }
+
+    const val MAX_NOTES = 8
+    const val MAX_NOTE_LENGTH = 6000
+
     fun apkName(version: InterComVersion) = "InterCom-Android-${version.name}-$ABI.apk"
 
     /**

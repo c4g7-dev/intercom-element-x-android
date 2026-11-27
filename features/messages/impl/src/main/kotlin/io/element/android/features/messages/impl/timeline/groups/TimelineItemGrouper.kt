@@ -14,7 +14,9 @@ import dev.zacsweers.metro.SingleIn
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.TimelineItemThreadInfo
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRedactedContent
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.RoomScope
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.UniqueId
 import kotlinx.collections.immutable.toImmutableList
 
@@ -51,6 +53,18 @@ class TimelineItemGrouper {
         }
         // Finally, fold runs of consecutive deleted messages into a single group (element-web style).
         return result.collapseRedactedRuns(groupIds)
+            // InterCom: and the pictures sent together into one gallery.
+            .foldImageRuns(::batchIdOf)
+    }
+
+    /** InterCom: the batch each picture message was sent in, or "" for none, by event id: reading it parses the event's JSON. */
+    private val batchIds = HashMap<EventId, String>()
+
+    private fun batchIdOf(event: TimelineItem.Event): String? {
+        val eventId = event.eventId ?: return null
+        return batchIds.getOrPut(eventId) {
+            runCatchingExceptions { galleryBatchIdOf(event.debugInfo.originalJson) }.getOrNull().orEmpty()
+        }.takeIf { it.isNotEmpty() }
     }
 }
 

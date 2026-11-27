@@ -61,4 +61,27 @@ data class UpdateCandidate(
     val notes: String = "",
     val releaseUrl: String? = null,
     val minSdk: Int? = null,
+    /** The notes of this release and of every release between it and the running app, newest first. */
+    val notesHistory: List<ReleaseNote> = emptyList(),
+) {
+    /** [notesHistory], or for a candidate that was stored by a version without it, the release's own notes. */
+    fun history(): List<ReleaseNote> {
+        return notesHistory.ifEmpty { listOf(ReleaseNote(versionName, versionCode, notes)) }.filter { it.notes.isNotBlank() }
+    }
+}
+
+/** The notes of one release: the Markdown of its GitHub release, or the plain text of its `android-update.json`. */
+@Serializable
+data class ReleaseNote(
+    val versionName: String,
+    val versionCode: Long,
+    val notes: String,
+)
+
+/** What is shown once after an update: the running version and the notes of every release the update brought. */
+@Serializable
+data class WhatsNew(
+    val versionName: String,
+    val versionCode: Long,
+    val notes: List<ReleaseNote>,
 )

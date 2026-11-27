@@ -18,5 +18,6 @@ import kotlinx.coroutines.flow.map
 class DefaultInterComUpdateIndicator(
     updater: InterComUpdater,
 ) : InterComUpdateIndicator {
-    override val isUpdateAvailable: Flow<Boolean> = updater.state.map { it.candidate != null }.distinctUntilChanged()
+    override val availableVersion: Flow<String?> = updater.state.map { it.candidate?.versionName }.distinctUntilChanged()
+    override val isUpdateAvailable: Flow<Boolean> = availableVersion.map { it != null }.distinctUntilChanged()
 }

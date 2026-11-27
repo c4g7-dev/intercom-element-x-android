@@ -886,10 +886,12 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
 
     @Test
     fun `present - sending gallery after image edits restarts preprocessing`() = runTest {
+        // InterCom: several items are a message each, never one `m.gallery` message.
         val sendGalleryResult =
             lambdaRecorder<List<GalleryItemInfo>, String?, String?, EventId?, Result<FakeMediaUploadHandler>> { _, _, _, _ ->
                 Result.success(FakeMediaUploadHandler())
             }
+        var sentFiles = 0
         val firstLocalMedia = aLocalMedia(uri = Uri.parse("file:///tmp/original-1.jpeg"))
         val secondLocalMedia = aLocalMedia(uri = Uri.parse("file:///tmp/original-2.jpeg"))
         val editedUri = Uri.parse("file:///tmp/edited-1.jpeg")
@@ -898,6 +900,10 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
             room = FakeJoinedRoom(
                 liveTimeline = FakeTimeline().apply {
                     sendGalleryLambda = sendGalleryResult
+                    sendFileLambda = { _, _, _, _, _ ->
+                        sentFiles++
+                        Result.success(FakeMediaUploadHandler())
+                    }
                 },
             ),
             attachments = persistentListOf(
@@ -927,7 +933,8 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
             appliedState.eventSink(AttachmentsPreviewEvent.SendAttachment)
             consumeItemsUntilPredicate { it.sendActionState == SendActionState.Done }
 
-            sendGalleryResult.assertions().isCalledOnce()
+            sendGalleryResult.assertions().isNeverCalled()
+            assertThat(sentFiles).isEqualTo(2)
             onDoneListener.assertions().isCalledOnce()
         }
     }

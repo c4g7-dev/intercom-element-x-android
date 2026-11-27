@@ -15,6 +15,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.features.intercomupdate.api.InterComUpdatePrompt
 import io.element.android.features.intercomupdate.impl.install.openInstallPermissionSettings
+import io.element.android.features.intercomupdate.impl.install.openSettingsFor
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 
 @ContributesBinding(AppScope::class)
@@ -31,6 +32,7 @@ class DefaultInterComUpdatePrompt(
             // Without a browser there is nowhere to open the page.
             onOpenReleaseNotes = { url -> runCatchingExceptions { uriHandler.openUri(url) } },
             onAllowInstallClick = { context.openInstallPermissionSettings() },
+            onOpenHintSettings = { hint -> context.openSettingsFor(hint) },
             modifier = modifier,
         )
     }

@@ -16,6 +16,9 @@ sealed interface InterComUpdatePromptEvent {
     /** Closes the progress or the failure; the update itself goes on. */
     data object Hide : InterComUpdatePromptEvent
 
+    /** "What's new" was closed, in whatever way. */
+    data object DismissWhatsNew : InterComUpdatePromptEvent
+
     /** The app is on screen again: the time has moved on, and what the user allowed may have changed. */
     data object Resumed : InterComUpdatePromptEvent
 }

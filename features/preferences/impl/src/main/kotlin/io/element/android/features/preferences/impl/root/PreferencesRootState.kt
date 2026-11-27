@@ -36,6 +36,8 @@ data class PreferencesRootState(
     val showLocationSettings: Boolean,
     /** InterCom: a newer release is known, which marks the "InterCom updates" entry. */
     val isInterComUpdateAvailable: Boolean,
+    /** InterCom: the version name of that release, for the "Update available" row at the top, or null. */
+    val interComUpdateVersion: String?,
     val snackbarMessage: SnackbarMessage?,
     val eventSink: (PreferencesRootEvent) -> Unit,
 )

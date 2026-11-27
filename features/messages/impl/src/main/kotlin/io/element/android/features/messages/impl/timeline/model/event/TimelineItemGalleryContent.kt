@@ -8,9 +8,11 @@
 package io.element.android.features.messages.impl.timeline.model.event
 
 import io.element.android.libraries.htmlrenderer.api.DocumentNode
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.media.MediaSource
 import io.element.android.libraries.matrixmedia.api.MediaRequestData
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlin.time.Duration
 
 data class TimelineItemGalleryContent(
@@ -21,6 +23,11 @@ data class TimelineItemGalleryContent(
     val captionTree: DocumentNode? = null,
     override val isEdited: Boolean,
     val items: ImmutableList<GalleryItem>,
+    /**
+     * InterCom: not empty for a gallery that stands for several picture messages sent together (see
+     * `foldImageRuns`): their event ids, in the order of [items]. Empty for an `m.gallery` message.
+     */
+    val foldedEventIds: ImmutableList<EventId> = persistentListOf(),
 ) : TimelineItemEventContent, TimelineItemEventMutableContent {
     override val type: String = "TimelineItemGalleryContent"
 

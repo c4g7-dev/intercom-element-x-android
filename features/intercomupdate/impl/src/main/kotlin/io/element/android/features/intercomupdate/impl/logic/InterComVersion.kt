@@ -13,8 +13,10 @@ package io.element.android.features.intercomupdate.impl.logic
  *
  * The version code follows from it, as `plugins/src/main/kotlin/Versions.kt` and `app/build.gradle.kts` compute it:
  * `((2000 + yy) * 10_000 + mm * 100 + n) * 100 + abi * 10 + revision`, e.g. `26.11.1-intercom.4` for arm64-v8a
- * (ABI digit 2) is `2026110124`. A release states its version code in `android-update.json`; this derivation is
- * what orders the releases before that file is read, and what a release without the file falls back to.
+ * (ABI digit 2) is `2026110124`, and `26.11.1-intercom.14` is `2026110134`: a revision of two digits runs into the
+ * ABI's digit, which is the same in every release, so the codes keep rising up to revision 79. A release states
+ * its version code in `android-update.json`; this derivation is what orders the releases before that file is
+ * read, and what a release without the file falls back to.
  */
 data class InterComVersion(
     val year: Int,
@@ -45,14 +47,17 @@ data class InterComVersion(
         /** The ABI digit of the one APK there is, arm64-v8a. */
         const val ABI_CODE_ARM64 = 2
 
-        private val pattern = Regex("""(\d{2})\.(\d{1,2})\.(\d{1,2})-intercom\.(\d)""")
+        /** The last revision whose version code is below the next upstream version's first. */
+        const val MAX_REVISION = 79
+
+        private val pattern = Regex("""(\d{2})\.(\d{1,2})\.(\d{1,2})-intercom\.(\d{1,2})""")
 
         /** Parses a version name, or returns null when it is not one of InterCom for Android. */
         fun parse(name: String): InterComVersion? {
             val match = pattern.matchEntire(name.trim()) ?: return null
             val (year, month, release, revision) = match.destructured
             return InterComVersion(year.toInt(), month.toInt(), release.toInt(), revision.toInt())
-                .takeIf { it.month in 1..12 }
+                .takeIf { it.month in 1..12 && it.revision <= MAX_REVISION }
         }
 
         /**

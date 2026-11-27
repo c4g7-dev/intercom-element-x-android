@@ -57,11 +57,14 @@ object Versions {
     const val VERSION_CODE = (2000 + versionYear) * 10_000 + versionMonth * 100 + versionReleaseNumber
 
     /**
-     * InterCom: the revision of the fork on top of the upstream version, in [0,9]. It ends the version name
-     * (`26.11.1-intercom.2`) and is the last digit of the version code, after the ABI digit, so that every
-     * revision installs over the one before it. Back to 1 with each new upstream version.
+     * InterCom: the revision of the fork on top of the upstream version, in [1,79]. It ends the version name
+     * (`26.11.1-intercom.14`) and is added to the version code after the ABI digit: `<base><abi>0 + revision`, so
+     * 2026110127 for revision 7 of arm64-v8a (ABI digit 2) and 2026110134 for revision 14. A revision of two digits
+     * runs into the ABI's digit, which is the same for every release (there is one APK, arm64-v8a), so every
+     * revision installs over the one before it; above 79 the code would reach the next upstream version's. The
+     * revision is the same as the desktop release's of the same round. Back to 1 with each new upstream version.
      */
-    const val INTERCOM_REVISION = 7
+    const val INTERCOM_REVISION = 14
     val VERSION_NAME = "$versionYear.${versionMonth.toString().padStart(2, '0')}.$versionReleaseNumber-intercom.$INTERCOM_REVISION"
 
     /**

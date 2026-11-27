@@ -33,15 +33,46 @@ What differs from upstream Element X Android:
   as [ntfy](https://ntfy.sh/) must be installed on the phone.
 - Element's `https://*.element.io` app links are not claimed.
 - **Updates itself** from the [InterCom releases](https://github.com/c4g7-dev/InterCom/releases)
-  (`features/intercomupdate`, Settings → InterCom updates): it looks for a newer `android-v…` release whenever the app
-  comes to the screen (at most every half hour) and every twelve hours (WorkManager), installs it automatically or
-  offers it in a dialog ("Update now" / "Later") and a notification, downloads the APK (on unmetered networks unless
-  mobile data is allowed or the user asked), checks its SHA-256 against the release's `android-update.json` and its signing
-  certificate against the running app's, and installs it through `PackageInstaller`. The first update needs the
-  user's permission to install apps and possibly a confirmation; on Android 12 or newer, later ones need neither.
-  The release's side of it is `tools/android-release.sh` and `docs/BUILDING.md` of the InterCom repository. A build
-  for another repository or application id changes `ReleaseSelector.DOWNLOAD_PREFIX` and
-  `DefaultReleaseSource.RELEASES_URL`; a debug build does not update itself.
+  (`features/intercomupdate`, Settings → InterCom updates). While the app is on screen it looks at the releases
+  feed (`releases.atom`, with the ETag of its last answer): when the app comes to the screen or the network returns
+  (once a minute at most) and every half hour. Only when the feed's `android-v…` entries changed does it ask the
+  GitHub API for the releases (and every six hours whatever the feed says), because the API allows an address
+  without a login 60 requests an hour and counts unchanged answers too; WorkManager still checks every twelve hours
+  in the background. A newer release is installed automatically or offered in a dialog ("Update now" / "Later")
+  and a notification: the APK is downloaded (on unmetered networks unless mobile data is allowed or the user
+  asked), its SHA-256 checked against the release's `android-update.json` and its signing certificate against the
+  running app's, and it is installed through `PackageInstaller`. The first update needs the user's permission to
+  install apps and possibly a confirmation; on Android 12 or newer, later ones need neither.
+  - While a newer release is known, the avatar that leads to the settings has a **red dot** and the settings begin
+    with an **Update available** row.
+  - The dialog shows **what is new**: the notes of the release and of every release between it and the running
+    one, newest first, drawn as text and lists (HTML is taken out, pictures are not loaded, a link is its text).
+    After an update the app shows "What's new in InterCom <version>" once; "Show what's new after updates" in the
+    updater's settings turns that off.
+  - When Android does not install the update, the app says what can be done: on Samsung phones that **Auto
+    Blocker** may be blocking app installs (with a button to the security settings), otherwise about storage, an
+    unsupported device or another build being installed. The installer's status code is written to the app's log.
+  - The release's side of it is `tools/android-release.sh` and `docs/BUILDING.md` of the InterCom repository. A
+    build for another repository or application id changes `ReleaseSelector.DOWNLOAD_PREFIX`,
+    `DefaultReleaseSource.RELEASES_URL` and `ReleaseFeed.URL`; a debug build does not update itself.
+- **InterCom's look**: the near-black neutral surfaces, hairlines and single accent (`#6875f5`) of the desktop app,
+  and a light variant, as Compound semantic colours (`libraries/compound/…/theme/InterComPalette.kt`) that every
+  component reads; corners of 6, 8, 12 and 16 dp. Green stays for "success", red for "critical".
+- **Pictures sent together are one gallery**, as on the desktop: consecutive picture messages of one sender,
+  within two minutes of each other or of one batch (`io.intercom.gallery`), with nothing shown between them, are
+  drawn as one grid (`timeline/groups/ImageGalleries.kt`), and a tap opens the viewer that pages through them.
+  Several items can be chosen at once in the picker; they are sent as a message each, pictures marked as one batch
+  (`libraries/mediaupload/…/ImageBatch.kt`), never as one `m.gallery` message.
+- **The composer's buttons stay on the text's line.** The attachment button, the send or voice button and the emoji
+  button are centred on the field's one line of text and stay on its last line when it grows, whatever the size of
+  the font or the height of the device's font (`libraries/textcomposer/…/ComposerMetrics.kt`); upstream lifts them
+  by a fixed 5 dp, which fits the default font only.
+- **InterCom's own ringtone** for incoming calls (Settings → Notifications → Call ringtone; "System default" and
+  any other tone can be chosen instead). It is InterCom's own sound, worked out from sine waves by
+  `apps/desktop/intercom/gen-sounds.py` of the web fork, no recording and taken from no other product.
+- The version is `<Element X version>-intercom.<n>` with the same `<n>` as the desktop release of the round
+  (`INTERCOM_REVISION` in `plugins/src/main/kotlin/Versions.kt`, 1 to 79), and the version code adds `<n>` after
+  the ABI digit: 2026110134 for 26.11.1-intercom.14.
 
 Known limitations:
 

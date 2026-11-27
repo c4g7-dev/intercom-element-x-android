@@ -323,4 +323,11 @@ interface JoinedRoom : BaseRoom {
      * the user's display name across all of their rooms.
      */
     suspend fun setOwnMemberDisplayName(displayName: String): Result<Unit>
+
+    /**
+     * InterCom: sends an event of [eventType] whose content is the JSON object [content], as it is, encrypted like
+     * any other event where the room is. For what the typed senders cannot say: the mark on the pictures of one
+     * batch (`io.intercom.gallery`). There is no local echo, and it is not queued: it has failed when this fails.
+     */
+    suspend fun sendRaw(eventType: String, content: String): Result<Unit>
 }

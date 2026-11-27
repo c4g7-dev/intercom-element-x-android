@@ -34,7 +34,7 @@ class InterComVersionTest {
         assertThat(InterComVersion.parseTag("v1.12.35-intercom.5")).isNull()
         assertThat(InterComVersion.parseTag("android-v26.11.1")).isNull()
         assertThat(InterComVersion.parseTag("android-v26.13.1-intercom.1")).isNull()
-        assertThat(InterComVersion.parseTag("android-v26.11.1-intercom.10")).isNull()
+        assertThat(InterComVersion.parseTag("android-v26.11.1-intercom.100")).isNull()
         assertThat(InterComVersion.parseTag("android-v26.11.1-intercom.4-rc1")).isNull()
         assertThat(InterComVersion.parseTag("")).isNull()
     }
@@ -50,5 +50,24 @@ class InterComVersionTest {
         )
         assertThat(versions.shuffled().sorted()).isEqualTo(versions)
         assertThat(versions.map { it.versionCode() }).isInStrictOrder()
+    }
+
+    @Test
+    fun `a revision of two digits is newer than every revision of one, in the name and in the version code`() {
+        val fourteen = InterComVersion.parseTag("android-v26.11.1-intercom.14")!!
+        val seven = InterComVersion.parse("26.11.1-intercom.7")!!
+        assertThat(fourteen).isEqualTo(InterComVersion(26, 11, 1, 14))
+        assertThat(fourteen.name).isEqualTo("26.11.1-intercom.14")
+        assertThat(fourteen).isGreaterThan(seven)
+        assertThat(fourteen).isGreaterThan(InterComVersion(26, 11, 1, 9))
+        // 26.11.1-intercom.7 was released with version code 2026110127.
+        assertThat(seven.versionCode()).isEqualTo(2_026_110_127L)
+        assertThat(fourteen.versionCode()).isEqualTo(2_026_110_134L)
+        // The codes rise with the revision up to 79, and stay below the next upstream version's first.
+        val codes = (1..InterComVersion.MAX_REVISION).map { InterComVersion(26, 11, 1, it).versionCode() }
+        assertThat(codes).isInStrictOrder()
+        assertThat(codes.last()).isLessThan(InterComVersion(26, 11, 2, 1).versionCode())
+        assertThat(InterComVersion.parse("26.11.1-intercom.80")).isNull()
+        assertThat(InterComVersion.parse("26.11.1-intercom.100")).isNull()
     }
 }

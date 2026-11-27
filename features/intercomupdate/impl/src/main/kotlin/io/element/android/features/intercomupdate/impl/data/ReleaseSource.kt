@@ -9,7 +9,9 @@ package io.element.android.features.intercomupdate.impl.data
 
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
+import io.element.android.features.intercomupdate.impl.logic.FeedAnswer
 import io.element.android.features.intercomupdate.impl.logic.GitHubRelease
+import io.element.android.features.intercomupdate.impl.logic.ReleaseFeed
 import io.element.android.features.intercomupdate.impl.logic.ReleaseSelector
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import kotlinx.coroutines.ensureActive
@@ -25,6 +27,12 @@ import kotlin.coroutines.coroutineContext
 interface ReleaseSource {
     /** The newest releases of the InterCom repository, the desktop's among them. */
     suspend fun releases(): List<GitHubRelease>
+
+    /**
+     * The releases feed, asked for with the [etag] of the last answer. It is outside of the API's request limit.
+     * [FeedAnswer.Failed] is never returned: a failure is an [IOException].
+     */
+    suspend fun feed(etag: String?): FeedAnswer
 
     /** The text of a small file of a release. */
     suspend fun text(url: String): String
@@ -45,6 +53,28 @@ class DefaultReleaseSource(
     override suspend fun releases(): List<GitHubRelease> {
         val body = get(RELEASES_URL, accept = "application/vnd.github+json")
         return json.decodeFromString<List<GitHubRelease>>(body)
+    }
+
+    override suspend fun feed(etag: String?): FeedAnswer = withContext(dispatchers.io) {
+        val request = Request.Builder().url(ReleaseFeed.URL)
+            .header("Accept", "application/atom+xml")
+            .apply { if (!etag.isNullOrBlank()) header("If-None-Match", etag) }
+            .build()
+        client.newCall(request).execute().use { response ->
+            when {
+                response.code == HTTP_NOT_MODIFIED -> FeedAnswer.NotModified
+                !response.isSuccessful -> throw IOException("HTTP ${response.code} for ${ReleaseFeed.URL}")
+                else -> {
+                    val source = response.body.source()
+                    if (source.request(MAX_TEXT_BYTES + 1)) throw IOException("${ReleaseFeed.URL} is too large")
+                    try {
+                        ReleaseFeed.parse(source.readUtf8(), response.header("ETag"))
+                    } catch (e: IllegalArgumentException) {
+                        throw IOException("${ReleaseFeed.URL}: ${e.message}", e)
+                    }
+                }
+            }
+        }
     }
 
     override suspend fun text(url: String): String {
@@ -104,6 +134,7 @@ class DefaultReleaseSource(
 
     companion object {
         const val RELEASES_URL = "https://api.github.com/repos/c4g7-dev/InterCom/releases?per_page=30"
+        private const val HTTP_NOT_MODIFIED = 304
         private const val MAX_TEXT_BYTES = 2L * 1024 * 1024
         private const val MAX_APK_BYTES = 600L * 1024 * 1024
     }

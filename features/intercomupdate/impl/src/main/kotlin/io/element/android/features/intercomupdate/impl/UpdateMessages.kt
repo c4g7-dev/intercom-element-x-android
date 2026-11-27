@@ -9,6 +9,7 @@ package io.element.android.features.intercomupdate.impl
 
 import androidx.annotation.StringRes
 import io.element.android.features.intercomupdate.impl.install.InstallFailure
+import io.element.android.features.intercomupdate.impl.install.InstallHint
 import io.element.android.features.intercomupdate.impl.logic.ApkRejection
 import io.element.android.features.intercomupdate.impl.logic.UpdateError
 
@@ -28,6 +29,7 @@ fun UpdateError.messageRes(): Int = when (this) {
         ApkRejection.SignatureMismatch -> R.string.screen_intercom_update_error_apk_signature
     }
     UpdateError.InstallNotAllowed -> R.string.screen_intercom_update_error_install_not_allowed
+    UpdateError.NotConfirmed -> R.string.screen_intercom_update_error_not_confirmed
     is UpdateError.Install -> when (InstallFailure.of(status)) {
         InstallFailure.Aborted -> R.string.screen_intercom_update_error_install_aborted
         InstallFailure.Blocked -> R.string.screen_intercom_update_error_install_blocked
@@ -46,4 +48,21 @@ fun UpdateError.detail(): String? = when (this) {
     is UpdateError.BadRelease -> detail
     is UpdateError.Install -> detail
     else -> null
+}
+
+@StringRes
+fun InstallHint.messageRes(): Int = when (this) {
+    InstallHint.SamsungAutoBlocker -> R.string.screen_intercom_update_hint_samsung
+    InstallHint.Storage -> R.string.screen_intercom_update_hint_storage
+    InstallHint.Incompatible -> R.string.screen_intercom_update_hint_incompatible
+    InstallHint.Conflict -> R.string.screen_intercom_update_hint_conflict
+}
+
+/** The label of the button that leads to where the hint says to go, or null when there is no such place. */
+@StringRes
+fun InstallHint.actionRes(): Int? = when (this) {
+    InstallHint.SamsungAutoBlocker -> R.string.screen_intercom_update_hint_samsung_action
+    InstallHint.Storage -> R.string.screen_intercom_update_hint_storage_action
+    InstallHint.Incompatible,
+    InstallHint.Conflict -> null
 }

@@ -33,13 +33,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import io.element.android.compound.annotations.CoreColorToken
 import io.element.android.compound.tokens.compoundTypography
 import io.element.android.compound.tokens.generated.SemanticColors
 import io.element.android.compound.tokens.generated.TypographyTokens
-import io.element.android.compound.tokens.generated.compoundColorsDark
-import io.element.android.compound.tokens.generated.compoundColorsLight
-import io.element.android.compound.tokens.generated.internal.DarkColorTokens
 
 /**
  * Inspired from https://medium.com/@lucasyujideveloper/54cbcbde1ace
@@ -79,7 +75,7 @@ object ElementTheme {
 }
 
 // Global variables (application level)
-internal val LocalCompoundColors = staticCompositionLocalOf { compoundColorsLight }
+internal val LocalCompoundColors = staticCompositionLocalOf { interComColorsLight }
 
 /**
  * Sets up the theme for the application, or a part of it.
@@ -96,7 +92,6 @@ internal val LocalCompoundColors = staticCompositionLocalOf { compoundColorsLigh
  * @param typography the Material 3 [Typography] tokens to use. It'll use [compoundTypography] by default.
  * @param content the content to apply the theme to.
  */
-@OptIn(CoreColorToken::class)
 @Composable
 fun ElementTheme(
     theme: Theme = if (isSystemInDarkTheme()) Theme.Dark else Theme.Light,
@@ -104,8 +99,9 @@ fun ElementTheme(
     lightStatusBar: Boolean = !theme.isDark(),
     // true to enable MaterialYou
     dynamicColor: Boolean = false,
-    compoundLight: SemanticColors = compoundColorsLight,
-    compoundDark: SemanticColors = compoundColorsDark,
+    // InterCom: its own palette is the default, see InterComPalette.kt.
+    compoundLight: SemanticColors = interComColorsLight,
+    compoundDark: SemanticColors = interComColorsDark,
     materialColorsLight: ColorScheme = compoundLight.toMaterialColorScheme(),
     materialColorsDark: ColorScheme = compoundDark.toMaterialColorScheme(),
     typography: Typography = compoundTypography,
@@ -116,7 +112,7 @@ fun ElementTheme(
         darkTheme -> if (theme == Theme.Black) {
             compoundDark.copy(
                 bgCanvasDefault = Color.Black,
-                separatorSecondary = DarkColorTokens.colorGray400,
+                separatorSecondary = InterComPalette.darkSelected,
             )
         } else {
             compoundDark
@@ -194,6 +190,8 @@ fun ElementTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = typography,
+            // InterCom: 6, 8, 12 and 16 dp corners in place of Material's softer ones.
+            shapes = interComShapes,
             content = content
         )
     }

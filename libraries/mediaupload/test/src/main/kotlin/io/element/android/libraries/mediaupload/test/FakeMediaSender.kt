@@ -20,6 +20,7 @@ class FakeMediaSender(
     private val sendMediaResult: () -> Result<Unit> = { lambdaError() },
     private val sendVoiceMessageResult: () -> Result<Unit> = { lambdaError() },
     private val sendGalleryResult: () -> Result<Unit> = { lambdaError() },
+    private val sendBatchResult: (List<MediaUploadInfo>, String?) -> Result<Unit> = { _, _ -> lambdaError() },
     private val cleanUpResult: () -> Unit = { lambdaError() },
 ) : MediaSender {
     override suspend fun preProcessMedia(
@@ -57,6 +58,14 @@ class FakeMediaSender(
         inReplyToEventId: EventId?,
     ): Result<Unit> {
         return sendVoiceMessageResult()
+    }
+
+    override suspend fun sendBatch(
+        mediaUploadInfos: List<MediaUploadInfo>,
+        caption: String?,
+        inReplyToEventId: EventId?,
+    ): Result<Unit> {
+        return sendBatchResult(mediaUploadInfos, caption)
     }
 
     override suspend fun sendGallery(

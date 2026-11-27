@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -18,7 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.intercomupdate.impl.R
+import io.element.android.features.intercomupdate.impl.actionRes
 import io.element.android.features.intercomupdate.impl.detail
+import io.element.android.features.intercomupdate.impl.install.InstallHint
 import io.element.android.features.intercomupdate.impl.logic.UpdateState
 import io.element.android.features.intercomupdate.impl.messageRes
 import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory
@@ -33,13 +36,12 @@ import io.element.android.libraries.designsystem.theme.components.OutlinedButton
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.OnLifecycleEvent
 
-private const val MAX_NOTES_LENGTH = 1200
-
 @Composable
 fun InterComUpdateView(
     state: InterComUpdateState,
     onBackClick: () -> Unit,
     onAllowInstallClick: () -> Unit,
+    onOpenHintSettings: (InstallHint) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     OnLifecycleEvent { _, event ->
@@ -57,7 +59,7 @@ fun InterComUpdateView(
             },
         )
         if (state.isSupported) {
-            UpdateSection(state = state, onAllowInstallClick = onAllowInstallClick)
+            UpdateSection(state = state, onAllowInstallClick = onAllowInstallClick, onOpenHintSettings = onOpenHintSettings)
             SettingsSection(state = state)
             Text(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
@@ -86,6 +88,7 @@ private fun statusText(updateState: UpdateState): String = when (updateState) {
 private fun UpdateSection(
     state: InterComUpdateState,
     onAllowInstallClick: () -> Unit,
+    onOpenHintSettings: (InstallHint) -> Unit,
 ) {
     val updateState = state.updateState
     val candidate = updateState.candidate
@@ -97,6 +100,22 @@ private fun UpdateSection(
                     text = detail,
                     style = ElementTheme.typography.fontBodySmRegular,
                     color = ElementTheme.colors.textSecondary,
+                )
+            }
+        }
+        val hint = state.installHint
+        if (hint != null) {
+            Text(
+                modifier = Modifier.padding(bottom = 8.dp),
+                text = stringResource(hint.messageRes()),
+                style = ElementTheme.typography.fontBodyMdRegular,
+                color = ElementTheme.colors.textPrimary,
+            )
+            hint.actionRes()?.let { action ->
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    text = stringResource(action),
+                    onClick = { onOpenHintSettings(hint) },
                 )
             }
         }
@@ -149,14 +168,16 @@ private fun UpdateSection(
             onClick = { state.eventSink(InterComUpdateEvent.CheckNow) },
         )
     }
-    if (candidate != null && candidate.notes.isNotBlank()) {
+    val notes = remember(candidate) { candidate?.history().orEmpty() }
+    if (notes.isNotEmpty()) {
         PreferenceCategory(title = stringResource(R.string.screen_intercom_update_release_notes)) {
-            Text(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                text = candidate.notes.trim().let { if (it.length > MAX_NOTES_LENGTH) it.take(MAX_NOTES_LENGTH) + "…" else it },
-                style = ElementTheme.typography.fontBodyMdRegular,
-                color = ElementTheme.colors.textPrimary,
-            )
+            notes.forEach { note ->
+                ReleaseNoteView(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    note = note,
+                    showVersion = notes.size > 1,
+                )
+            }
         }
     }
 }
@@ -188,6 +209,12 @@ private fun SettingsSection(state: InterComUpdateState) {
             isChecked = state.settings.includePrereleases,
             onCheckedChange = { state.eventSink(InterComUpdateEvent.SetIncludePrereleases(it)) },
         )
+        PreferenceSwitch(
+            title = stringResource(R.string.screen_intercom_update_whats_new_setting_title),
+            subtitle = stringResource(R.string.screen_intercom_update_whats_new_setting_subtitle),
+            isChecked = state.settings.showWhatsNew,
+            onCheckedChange = { state.eventSink(InterComUpdateEvent.SetShowWhatsNew(it)) },
+        )
     }
 }
 
@@ -198,5 +225,6 @@ internal fun InterComUpdateViewPreview(@PreviewParameter(InterComUpdateStatePrev
         state = state,
         onBackClick = {},
         onAllowInstallClick = {},
+        onOpenHintSettings = {},
     )
 }

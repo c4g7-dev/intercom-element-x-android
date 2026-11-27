@@ -13,6 +13,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
 import io.element.android.features.intercomupdate.impl.data.CallMonitor
+import io.element.android.features.intercomupdate.impl.data.DeviceInfo
 import io.element.android.features.intercomupdate.impl.data.InterComUpdateStore
 import io.element.android.features.intercomupdate.impl.data.ReleaseSource
 import io.element.android.features.intercomupdate.impl.data.UpdateFiles
@@ -20,6 +21,8 @@ import io.element.android.features.intercomupdate.impl.install.ApkInstaller
 import io.element.android.features.intercomupdate.impl.install.InstallFailure
 import io.element.android.features.intercomupdate.impl.logic.ApkInfoReader
 import io.element.android.features.intercomupdate.impl.logic.ApkVerifier
+import io.element.android.features.intercomupdate.impl.logic.FeedAnswer
+import io.element.android.features.intercomupdate.impl.logic.GitHubRelease
 import io.element.android.features.intercomupdate.impl.logic.OnFound
 import io.element.android.features.intercomupdate.impl.logic.ReleaseSelector
 import io.element.android.features.intercomupdate.impl.logic.Sha256
@@ -29,6 +32,7 @@ import io.element.android.features.intercomupdate.impl.logic.UpdateEvent
 import io.element.android.features.intercomupdate.impl.logic.UpdateManifest
 import io.element.android.features.intercomupdate.impl.logic.UpdatePolicy
 import io.element.android.features.intercomupdate.impl.logic.UpdateState
+import io.element.android.features.intercomupdate.impl.logic.WhatsNew
 import io.element.android.features.intercomupdate.impl.logic.reduce
 import io.element.android.features.intercomupdate.impl.notifications.UpdateNotifier
 import io.element.android.features.intercomupdate.impl.work.UpdateScheduler
@@ -66,6 +70,7 @@ class DefaultInterComUpdater(
     private val notifier: UpdateNotifier,
     private val scheduler: UpdateScheduler,
     private val callMonitor: CallMonitor,
+    private val deviceInfo: DeviceInfo,
     private val clock: SystemClock,
     private val dispatchers: CoroutineDispatchers,
     @AppCoroutineScope private val coroutineScope: CoroutineScope,
@@ -73,6 +78,8 @@ class DefaultInterComUpdater(
     private val json = Json { ignoreUnknownKeys = true }
     private val checkMutex = Mutex()
     private val updateMutex = Mutex()
+    private val lookMutex = Mutex()
+    private val versionMutex = Mutex()
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
 
     // True when nothing is known, after a restart: then nothing is concluded about automatic installations.
@@ -88,6 +95,7 @@ class DefaultInterComUpdater(
 
     override suspend fun start() {
         if (!isSupported) return
+        noteRunningVersion()
         val settings = store.settings.first()
         val known = store.candidate()
         if (known != null) {
@@ -102,13 +110,85 @@ class DefaultInterComUpdater(
 
     override suspend fun onAppOpened() {
         if (!isSupported) return
+        lookMutex.withLock { look() }
+    }
+
+    /**
+     * The frequent, cheap look: the releases feed with the ETag of its last answer, which costs the API nothing.
+     * The releases themselves are asked for only when the feed's Android releases changed, see
+     * [UpdatePolicy.shouldAskApi].
+     */
+    private suspend fun look() {
         val settings = store.settings.first()
-        if (UpdatePolicy.shouldCheckOnOpen(settings, clock.epochMillis(), store.lastCheckAttempt())) {
-            check(CheckTrigger.AppOpen)
-        } else {
+        val now = clock.epochMillis()
+        if (!UpdatePolicy.shouldLookAtFeed(settings, now, store.lastFeedLook())) {
             // The permission to install may have been given, or a call may have ended, since the release was found.
             installAutomaticallyIfWanted()
+            return
         }
+        store.setLastFeedLook(now)
+        val memory = store.feedMemory()
+        val answer = try {
+            releaseSource.feed(memory.etag)
+        } catch (e: IOException) {
+            Timber.tag(TAG).w("The releases feed did not answer: ${e.message}")
+            FeedAnswer.Failed
+        }
+        val asks = UpdatePolicy.shouldAskApi(answer, memory, settings, now, store.lastCheck(), store.lastCheckAttempt())
+        Timber.tag(TAG).i("Releases feed: ${answer.describe()}, asking the API: $asks")
+        if (!asks) {
+            // A feed that changed for the desktop's releases only is not downloaded again.
+            if (answer is FeedAnswer.Changed && answer.fingerprint == memory.fingerprint) store.setFeedMemory(memory.copy(etag = answer.etag))
+            installAutomaticallyIfWanted()
+            return
+        }
+        val result = runCheck(CheckTrigger.AppOpen)
+        // A check that failed leaves the feed as it was remembered, so that the next look asks again.
+        if (result == CheckResult.Found || result == CheckResult.NothingNewer) {
+            store.setFeedMemory(UpdatePolicy.feedMemoryAfterCheck(answer, memory, result == CheckResult.Found, currentVersionCode()))
+        }
+    }
+
+    private fun FeedAnswer.describe(): String = when (this) {
+        FeedAnswer.NotModified -> "not modified"
+        FeedAnswer.Failed -> "failed"
+        is FeedAnswer.Changed -> "changed, Android releases: ${fingerprint.ifEmpty { "none" }}"
+    }
+
+    /**
+     * Tells an update from a first installation and from an ordinary start, and after an update keeps what is new
+     * for [InterComUpdateStore.whatsNew]: the notes of the release that was on offer, or when it was installed by
+     * other means, a note to collect them at the next check.
+     */
+    private suspend fun noteRunningVersion() = versionMutex.withLock {
+        val current = currentVersionCode()
+        val last = store.lastRunVersionCode()
+        if (last == current) return@withLock
+        val known = store.candidate()
+        // Versions before this one did not record what ran: a release they stored and that now runs is the update.
+        val isUpdate = last in 1 until current || last == 0L && known != null && known.versionCode <= current
+        if (isUpdate) {
+            val notes = known?.history().orEmpty().filter { it.versionCode in last + 1..current }
+            when {
+                notes.isNotEmpty() -> store.setWhatsNew(WhatsNew(buildMeta.versionName, current, notes))
+                last > 0 -> store.setWhatsNewSince(last)
+            }
+        }
+        store.setLastRunVersionCode(current)
+    }
+
+    /** After an update that this app did not make itself, its notes come from the list of releases. */
+    private suspend fun collectWhatsNew(releases: List<GitHubRelease>, currentVersionCode: Long) {
+        val since = store.whatsNewSince()
+        if (since <= 0) return
+        store.setWhatsNewSince(0)
+        if (since >= currentVersionCode) return
+        val notes = ReleaseSelector.notes(releases, since, currentVersionCode, includePrereleases = true)
+        if (notes.isNotEmpty()) store.setWhatsNew(WhatsNew(buildMeta.versionName, currentVersionCode, notes))
+    }
+
+    override suspend fun dismissWhatsNew() {
+        store.setWhatsNew(null)
     }
 
     override suspend fun onSettingsChanged() {
@@ -133,23 +213,34 @@ class DefaultInterComUpdater(
     }
 
     override suspend fun check(trigger: CheckTrigger) {
-        if (!isSupported) return
+        runCheck(trigger)
+    }
+
+    private enum class CheckResult { Found, NothingNewer, Failed, Skipped }
+
+    private suspend fun runCheck(trigger: CheckTrigger): CheckResult {
+        if (!isSupported) return CheckResult.Skipped
         checkMutex.withLock {
-            if (dispatch(UpdateEvent.CheckStarted) !is UpdateState.Checking) return
+            if (dispatch(UpdateEvent.CheckStarted) !is UpdateState.Checking) return CheckResult.Skipped
             store.setLastCheckAttempt(clock.epochMillis())
             try {
                 val settings = store.settings.first()
                 val currentVersionCode = currentVersionCode()
-                val selected = ReleaseSelector.select(releaseSource.releases(), currentVersionCode, settings.includePrereleases)
+                val releases = releaseSource.releases()
+                collectWhatsNew(releases, currentVersionCode)
+                val selected = ReleaseSelector.select(releases, currentVersionCode, settings.includePrereleases)
                 if (selected == null) {
                     store.setLastCheck(clock.epochMillis())
                     forget()
                     dispatch(UpdateEvent.NothingNewer)
-                    return
+                    return CheckResult.NothingNewer
                 }
                 val manifest = selected.manifest?.let { json.decodeFromString<UpdateManifest>(releaseSource.text(it.downloadUrl)) }
                 val sums = if (manifest == null) selected.sha256Sums?.let { releaseSource.text(it.downloadUrl) } else null
-                val candidate = ReleaseSelector.toCandidate(selected, manifest, sums, buildMeta.applicationId, currentVersionCode)
+                val newest = ReleaseSelector.toCandidate(selected, manifest, sums, buildMeta.applicationId, currentVersionCode)
+                // The notes of the releases in between, as their GitHub releases have them; the newest one's too.
+                val history = ReleaseSelector.notes(releases, currentVersionCode, selected.version.versionCode(), settings.includePrereleases)
+                val candidate = newest.copy(notesHistory = history)
                 store.setLastCheck(clock.epochMillis())
                 store.setCandidate(candidate)
                 Timber.tag(TAG).i("Found ${candidate.versionName} (${candidate.versionCode})")
@@ -160,6 +251,7 @@ class DefaultInterComUpdater(
                     notifier.showAvailable(candidate)
                     store.setNotifiedVersionCode(candidate.versionCode)
                 }
+                return CheckResult.Found
             } catch (e: CancellationException) {
                 dispatch(UpdateEvent.CheckFailed(UpdateError.Network(null)))
                 throw e
@@ -173,6 +265,7 @@ class DefaultInterComUpdater(
                 Timber.tag(TAG).w(e, "Update check: inconsistent release")
                 dispatch(UpdateEvent.CheckFailed(UpdateError.BadRelease(e.message)))
             }
+            return CheckResult.Failed
         }
     }
 
@@ -285,6 +378,10 @@ class DefaultInterComUpdater(
                 coroutineScope.launch { forget() }
             }
             else -> {
+                Timber.tag(TAG).w(
+                    "PackageInstaller refused the update: status=$status (${InstallFailure.of(status)}) message=$message " +
+                        "device=${deviceInfo.manufacturer} sdk=${deviceInfo.sdkInt}"
+                )
                 val error = UpdateError.Install(status, message)
                 // Saying no to the system's question needs no notification saying so.
                 fail(error, notify = InstallFailure.of(status) != InstallFailure.Aborted)
@@ -304,8 +401,20 @@ class DefaultInterComUpdater(
         _state.update { if (it is UpdateState.Failed && it.candidate == null) UpdateState.Failed(error, known) else it }
     }
 
+    override fun onConfirmationAbandoned() {
+        if (_state.value !is UpdateState.AwaitingConfirmation) return
+        Timber.tag(TAG).w(
+            "The update was not installed after Android asked to confirm it: device=${deviceInfo.manufacturer} sdk=${deviceInfo.sdkInt}"
+        )
+        // The release stays on offer; asking again starts a new session, which abandons this one.
+        _state.update { if (it is UpdateState.AwaitingConfirmation) UpdateState.Failed(UpdateError.NotConfirmed, it.candidate) else it }
+        notifier.cancel()
+    }
+
     override fun onAppReplaced() {
         coroutineScope.launch {
+            // Before the release is forgotten: its notes are what is new.
+            if (isSupported) noteRunningVersion()
             forget()
             if (!isSupported) return@launch
             notifier.showUpdated(buildMeta.versionName)

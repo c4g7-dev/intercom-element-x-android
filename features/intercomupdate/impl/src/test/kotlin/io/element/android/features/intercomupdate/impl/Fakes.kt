@@ -8,6 +8,7 @@
 package io.element.android.features.intercomupdate.impl
 
 import android.content.Intent
+import io.element.android.features.intercomupdate.impl.data.DeviceInfo
 import io.element.android.features.intercomupdate.impl.data.InterComUpdateStore
 import io.element.android.features.intercomupdate.impl.data.ReleaseSource
 import io.element.android.features.intercomupdate.impl.data.Snooze
@@ -16,9 +17,13 @@ import io.element.android.features.intercomupdate.impl.data.UpdateSettings
 import io.element.android.features.intercomupdate.impl.install.ApkInstaller
 import io.element.android.features.intercomupdate.impl.logic.ApkInfo
 import io.element.android.features.intercomupdate.impl.logic.ApkInfoReader
+import io.element.android.features.intercomupdate.impl.logic.FeedAnswer
+import io.element.android.features.intercomupdate.impl.logic.FeedMemory
 import io.element.android.features.intercomupdate.impl.logic.GitHubRelease
 import io.element.android.features.intercomupdate.impl.logic.UpdateCandidate
 import io.element.android.features.intercomupdate.impl.logic.UpdateError
+import io.element.android.features.intercomupdate.impl.logic.UpdateState
+import io.element.android.features.intercomupdate.impl.logic.WhatsNew
 import io.element.android.features.intercomupdate.impl.notifications.UpdateNotifier
 import io.element.android.features.intercomupdate.impl.work.UpdateScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,7 +72,41 @@ class InMemoryInterComUpdateStore(
     override suspend fun setNotifiedVersionCode(versionCode: Long) {
         notified = versionCode
     }
+
+    var lastFeedLook = 0L
+    override suspend fun lastFeedLook() = lastFeedLook
+    override suspend fun setLastFeedLook(millis: Long) {
+        lastFeedLook = millis
+    }
+
+    var feedMemory = FeedMemory()
+    override suspend fun feedMemory() = feedMemory
+    override suspend fun setFeedMemory(memory: FeedMemory) {
+        feedMemory = memory
+    }
+
+    override val whatsNew = MutableStateFlow<WhatsNew?>(null)
+    override suspend fun setWhatsNew(whatsNew: WhatsNew?) {
+        this.whatsNew.value = whatsNew
+    }
+
+    var lastRunVersionCode = 0L
+    override suspend fun lastRunVersionCode() = lastRunVersionCode
+    override suspend fun setLastRunVersionCode(versionCode: Long) {
+        lastRunVersionCode = versionCode
+    }
+
+    var whatsNewSince = 0L
+    override suspend fun whatsNewSince() = whatsNewSince
+    override suspend fun setWhatsNewSince(versionCode: Long) {
+        whatsNewSince = versionCode
+    }
 }
+
+class FakeDeviceInfo(
+    override val manufacturer: String = "Google",
+    override val sdkInt: Int = 34,
+) : DeviceInfo
 
 class FakeReleaseSource(
     var releases: List<GitHubRelease> = emptyList(),
@@ -76,9 +115,22 @@ class FakeReleaseSource(
     var failure: IOException? = null,
 ) : ReleaseSource {
     var downloads = 0
+    var releaseRequests = 0
+    var feedRequests = 0
+    val feedEtags = mutableListOf<String?>()
+
+    /** Null for a feed that does not answer. */
+    var feedAnswer: FeedAnswer? = null
+
+    override suspend fun feed(etag: String?): FeedAnswer {
+        feedRequests++
+        feedEtags += etag
+        return feedAnswer ?: throw IOException("no feed")
+    }
     var onDownload: () -> Unit = {}
 
     override suspend fun releases(): List<GitHubRelease> {
+        releaseRequests++
         failure?.let { throw it }
         return releases
     }
@@ -160,4 +212,37 @@ class FakeUpdateScheduler : UpdateScheduler {
     override fun enqueueUpdate(settings: UpdateSettings, userInitiated: Boolean) {
         events += if (userInitiated) "update asked" else "update auto"
     }
+}
+
+class FakeInterComUpdater(
+    initialState: UpdateState = UpdateState.Idle,
+    override val isSupported: Boolean = true,
+) : InterComUpdater {
+    override val state = MutableStateFlow(initialState)
+    val calls = mutableListOf<String>()
+
+    override suspend fun start() = Unit
+    override suspend fun onAppOpened() = Unit
+    override suspend fun onSettingsChanged() = Unit
+    override suspend fun check(trigger: CheckTrigger) = Unit
+    override fun requestUpdate() {
+        calls += "requestUpdate"
+    }
+
+    override suspend fun snooze() {
+        calls += "snooze"
+    }
+
+    override suspend fun downloadAndInstall(userInitiated: Boolean) = UpdateRun.Done
+    override fun onInstallStatus(status: Int, message: String?, confirmation: Intent?) = Unit
+    override fun onConfirmationAbandoned() {
+        calls += "onConfirmationAbandoned"
+        state.value = UpdateState.Failed(UpdateError.NotConfirmed, state.value.candidate)
+    }
+
+    override suspend fun dismissWhatsNew() {
+        calls += "dismissWhatsNew"
+    }
+
+    override fun onAppReplaced() = Unit
 }

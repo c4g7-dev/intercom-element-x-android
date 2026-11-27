@@ -43,8 +43,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -55,6 +57,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -135,6 +138,10 @@ fun TextComposer(
     isInThreadTimeline: Boolean = false,
     onAddEmoji: (() -> Unit)? = null,
 ) {
+    // InterCom: the height of the field with one line of text, which places the buttons, see ComposerMetrics.
+    val fontScale = LocalDensity.current.fontScale
+    val fieldHeight = remember(fontScale) { ComposerFieldHeight(ComposerMetrics.estimatedFieldHeight(fontScale)) }
+
     val markdown = when (state) {
         is TextEditorState.Markdown -> state.state.text.value()
         is TextEditorState.Rich -> state.richTextEditorState.messageMarkdown
@@ -215,7 +222,7 @@ fun TextComposer(
                     onResetComposerMode = onResetComposerMode,
                     isTextEmpty = state.state.text.value().isEmpty(),
                     trailingContent = onAddEmoji?.let { onClick ->
-                        @Composable { AddEmojiButton(onClick = onClick) }
+                        @Composable { AddEmojiButton(fieldHeight = fieldHeight, onClick = onClick) }
                     },
                 ) {
                     MarkdownTextInput(
@@ -419,6 +426,7 @@ fun TextComposer(
             onDeleteVoiceMessage = onDeleteVoiceMessage,
             onVoiceRecorderEvent = onVoiceRecorderEvent,
             onResetComposerMode = onResetComposerMode,
+            fieldHeight = fieldHeight,
         )
     }
 
@@ -469,8 +477,14 @@ private fun StandardLayout(
     onDeleteVoiceMessage: () -> Unit,
     onVoiceRecorderEvent: (VoiceMessageRecorderEvent) -> Unit,
     onResetComposerMode: () -> Unit,
+    fieldHeight: ComposerFieldHeight,
     modifier: Modifier = Modifier,
 ) {
+    // InterCom: the buttons beside the field stand on the centre line of its last line of text, whatever the
+    // size of the font, see ComposerMetrics.
+    val density = LocalDensity.current
+    val sideButtonBottomPadding = ComposerMetrics.sideButtonBottomPadding(fieldHeight.value)
+    val measuresField = voiceMessageState is VoiceMessageState.Idle && composerMode !is MessageComposerMode.Special
     Column(modifier = modifier) {
         if (isRoomEncrypted == false) {
             Spacer(Modifier.height(16.dp))
@@ -490,7 +504,7 @@ private fun StandardLayout(
                     // To avoid loosing keyboard focus, the IconButton has to be defined here and has to be always enabled.
                     IconButton(
                         modifier = Modifier
-                            .padding(top = 5.dp, bottom = 5.dp, start = 3.dp, end = endPadding)
+                            .padding(top = 5.dp, bottom = sideButtonBottomPadding, start = 3.dp, end = endPadding)
                             .size(48.dp),
                         onClick = {
                             if (voiceMessageState is VoiceMessageState.Idle) {
@@ -532,6 +546,9 @@ private fun StandardLayout(
                 modifier = Modifier
                     .padding(bottom = 8.dp, top = 8.dp)
                     .weight(1f)
+                    .onSizeChanged { size ->
+                        if (measuresField) fieldHeight.onMeasured(with(density) { size.height.toDp() })
+                    }
             ) {
                 val movableVoiceRecording = remember { movableContentOf { voiceRecording() } }
                 if (voiceMessageState is VoiceMessageState.Idle) {
@@ -552,7 +569,7 @@ private fun StandardLayout(
             val endButtonContentDescription = stringResource(endButtonParams.endButtonContentDescriptionResId)
             IconButton(
                 modifier = Modifier
-                    .padding(bottom = 5.dp, top = 5.dp, end = 6.dp, start = 6.dp)
+                    .padding(bottom = sideButtonBottomPadding, top = 5.dp, end = 6.dp, start = 6.dp)
                     .size(48.dp)
                     .clearAndSetSemantics {
                         contentDescription = endButtonContentDescription
@@ -709,18 +726,19 @@ private fun TextInputBox(
 }
 
 @Composable
-private fun AddEmojiButton(onClick: () -> Unit) {
-    // The box is sized exactly to one line of the text input (34 dp plus the 4 dp bottom padding), so the
-    // button neither expands the composer nor drifts off the centre line of the text. The 40 dp button
-    // overflows the box by equal margins top and bottom while retaining its full touch target.
+private fun AddEmojiButton(fieldHeight: ComposerFieldHeight, onClick: () -> Unit) {
+    // The box is sized exactly to one line of the text input at the default font size (34 dp plus the 4 dp
+    // bottom padding), so the button neither expands the composer nor drifts off the centre line of the text.
+    // InterCom: where the line is taller, the box is lifted to its centre, and the button is 48 dp like the
+    // ones beside the field: it overflows the box by equal margins while retaining its full touch target.
     Box(
         modifier = Modifier
-            .padding(end = 2.dp, bottom = 4.dp)
-            .size(width = 40.dp, height = 34.dp),
+            .padding(end = 2.dp, bottom = ComposerMetrics.emojiButtonBottomPadding(fieldHeight.value))
+            .size(width = 40.dp, height = ComposerMetrics.emojiButtonBoxHeight),
         contentAlignment = Alignment.Center,
     ) {
         IconButton(
-            modifier = Modifier.requiredSize(40.dp),
+            modifier = Modifier.requiredSize(48.dp),
             onClick = onClick,
         ) {
             Icon(
@@ -786,6 +804,44 @@ internal fun TextComposerWithEmojiButtonPreview() = ElementPreview {
             composerMode = MessageComposerMode.Normal,
             onAddEmoji = {},
         )
+    }
+}
+
+/** InterCom: with a large font the buttons stay on the centre line of the text, one line or several. */
+@PreviewsDayNight
+@Composable
+internal fun TextComposerLargeFontPreview() = ElementPreview {
+    CompositionLocalProvider(
+        LocalDensity provides Density(density = LocalDensity.current.density, fontScale = 1.5f),
+    ) {
+        PreviewColumn(
+            items = aTextEditorStateMarkdownList()
+        ) { textEditorState ->
+            ATextComposer(
+                state = textEditorState,
+                voiceMessageState = VoiceMessageState.Idle,
+                composerMode = MessageComposerMode.Normal,
+                onAddEmoji = {},
+            )
+        }
+    }
+}
+
+/** InterCom: the same row from right to left. */
+@PreviewsDayNight
+@Composable
+internal fun TextComposerRtlPreview() = ElementPreview {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        PreviewColumn(
+            items = aTextEditorStateMarkdownList()
+        ) { textEditorState ->
+            ATextComposer(
+                state = textEditorState,
+                voiceMessageState = VoiceMessageState.Idle,
+                composerMode = MessageComposerMode.Normal,
+                onAddEmoji = {},
+            )
+        }
     }
 }
 

@@ -23,6 +23,7 @@ import io.element.android.features.announcement.api.Announcement
 import io.element.android.features.announcement.api.AnnouncementService
 import io.element.android.features.home.impl.roomlist.RoomListState
 import io.element.android.features.home.impl.spaces.HomeSpacesState
+import io.element.android.features.intercomupdate.api.InterComUpdateIndicator
 import io.element.android.features.rageshake.api.RageshakeFeatureAvailability
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
@@ -46,6 +47,7 @@ class HomePresenter(
     private val syncService: SyncService,
     private val snackbarDispatcher: SnackbarDispatcher,
     private val indicatorService: IndicatorService,
+    private val interComUpdateIndicator: InterComUpdateIndicator,
     private val roomListPresenter: Presenter<RoomListState>,
     private val homeSpacesPresenter: Presenter<HomeSpacesState>,
     private val rageshakeFeatureAvailability: RageshakeFeatureAvailability,
@@ -108,7 +110,10 @@ class HomePresenter(
             client.getUserProfile()
         }
         // Avatar indicator
-        val showAvatarIndicator by indicatorService.showRoomListTopBarIndicator()
+        val showSessionIndicator by indicatorService.showRoomListTopBarIndicator()
+        // InterCom: the dot also says that a newer release is known; the settings behind the avatar lead to it.
+        val isInterComUpdateAvailable by remember { interComUpdateIndicator.isUpdateAvailable }.collectAsState(initial = false)
+        val showAvatarIndicator = showSessionIndicator || isInterComUpdateAvailable
 
         fun handleEvent(event: HomeEvent) {
             when (event) {

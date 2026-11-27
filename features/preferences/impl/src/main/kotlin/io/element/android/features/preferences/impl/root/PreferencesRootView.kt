@@ -92,6 +92,17 @@ fun PreferencesRootView(
             title = stringResource(id = CommonStrings.common_settings),
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) {
+            // InterCom: a newer release is known. Not translated, as the entry further down.
+            state.interComUpdateVersion?.let { version ->
+                ListItem(
+                    content = { Text("Update available") },
+                    supportingContent = { Text("InterCom $version") },
+                    leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Download())),
+                    trailingContent = ListItemContent.Badge,
+                    onClick = onOpenInterComUpdate,
+                )
+                HorizontalDivider()
+            }
             UserPreferences(
                 modifier = Modifier
                     .testTag(TestTags.settingsUserProfile)

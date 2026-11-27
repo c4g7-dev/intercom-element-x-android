@@ -14,6 +14,7 @@ import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.androidutils.hash.hash
 import io.element.android.libraries.core.extensions.flatMap
 import io.element.android.libraries.core.extensions.flatMapCatching
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
@@ -34,6 +35,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import timber.log.Timber
 import java.io.File
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 @ContributesBinding(RoomScope::class)
@@ -41,6 +43,7 @@ class DefaultMediaSenderFactory(
     private val preProcessor: MediaPreProcessor,
     private val room: JoinedRoom,
     private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
+    private val client: MatrixClient,
 ) : MediaSenderFactory {
     override fun create(
         timelineMode: Timeline.Mode,
@@ -50,6 +53,7 @@ class DefaultMediaSenderFactory(
             room = room,
             timelineMode = timelineMode,
             mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
+            uploadMedia = client::uploadMedia,
         )
     }
 }
@@ -68,6 +72,7 @@ class DefaultMediaSenderRoomFactory(
             room = room,
             timelineMode = Timeline.Mode.Live,
             mediaOptimizationConfigProvider = mediaOptimizationConfigProviderFactory.create(client),
+            uploadMedia = client::uploadMedia,
         )
     }
 }
@@ -77,6 +82,9 @@ class DefaultMediaSender(
     private val room: JoinedRoom,
     private val timelineMode: Timeline.Mode,
     private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
+    /** InterCom: uploads a file and returns its `mxc://` address. Without it, a batch of pictures is sent unmarked. */
+    private val uploadMedia: (suspend (mimeType: String, data: ByteArray) -> Result<String>)? = null,
+    private val newBatchId: () -> String = { UUID.randomUUID().toString() },
 ) : MediaSender {
     private val ongoingUploadJobs = ConcurrentHashMap<Job.Key, MediaUploadHandler>()
     val hasOngoingMediaUploads get() = ongoingUploadJobs.isNotEmpty()
@@ -196,6 +204,82 @@ class DefaultMediaSender(
                 }
         }
             .handleSendResult(galleryLogId)
+    }
+
+    override suspend fun sendBatch(
+        mediaUploadInfos: List<MediaUploadInfo>,
+        caption: String?,
+        inReplyToEventId: EventId?,
+    ): Result<Unit> {
+        val images = mediaUploadInfos.filterIsInstance<MediaUploadInfo.Image>()
+        // The mark is for pictures in the room's own timeline: a reply stays a message of its own on the desktop
+        // too, and a thread's messages carry a relation that only the SDK's senders write.
+        val canMark = uploadMedia != null &&
+            images.size == mediaUploadInfos.size &&
+            images.size > 1 &&
+            inReplyToEventId == null &&
+            timelineMode == Timeline.Mode.Live
+        // Whether the room is encrypted must be known: a file sent in the clear into an encrypted room would be a leak.
+        val isEncrypted = if (canMark) room.info().isEncrypted else null
+        var sent = 0
+        if (canMark && isEncrypted != null) {
+            val batchId = newBatchId()
+            Timber.d("Sending a batch of ${images.size} pictures, encrypted: $isEncrypted")
+            for ((index, image) in images.withIndex()) {
+                val result = sendMarkedImage(batchId, index, images.size, image, caption.takeIf { index == 0 }, isEncrypted)
+                if (result.isFailure) {
+                    val error = result.exceptionOrNull()
+                    if (error is CancellationException) throw error
+                    // What is left goes the ordinary way, which has its own retries; desktop joins it by time.
+                    Timber.w(error, "Picture ${index + 1} of the batch was not sent marked, sending the rest unmarked")
+                    break
+                }
+                sent++
+            }
+        }
+        for ((index, info) in mediaUploadInfos.withIndex().drop(sent)) {
+            val result = sendPreProcessedMedia(
+                mediaUploadInfo = info,
+                caption = caption.takeIf { index == 0 },
+                formattedCaption = null,
+                inReplyToEventId = inReplyToEventId.takeIf { index == 0 },
+            )
+            if (result.isFailure) return result
+        }
+        return Result.success(Unit)
+    }
+
+    private suspend fun sendMarkedImage(
+        batchId: String,
+        index: Int,
+        count: Int,
+        image: MediaUploadInfo.Image,
+        caption: String?,
+        encrypt: Boolean,
+    ): Result<Unit> = runCatchingExceptions {
+        val upload = requireNotNull(uploadMedia)
+        suspend fun uploadFile(file: File, mimeType: String?): ImageBatch.Uploaded {
+            val bytes = file.readBytes()
+            return if (encrypt) {
+                val encrypted = EncryptedAttachment.encrypt(bytes)
+                ImageBatch.Uploaded(upload("application/octet-stream", encrypted.data).getOrThrow(), encrypted)
+            } else {
+                ImageBatch.Uploaded(upload(mimeType ?: "application/octet-stream", bytes).getOrThrow(), null)
+            }
+        }
+        val thumbnail = image.thumbnailFile?.let { uploadFile(it, image.imageInfo.thumbnailInfo?.mimetype) }
+        val uploaded = uploadFile(image.file, image.imageInfo.mimetype)
+        val content = ImageBatch.content(
+            batchId = batchId,
+            index = index,
+            count = count,
+            filename = image.file.name,
+            caption = caption,
+            info = image.imageInfo,
+            image = uploaded,
+            thumbnail = thumbnail,
+        )
+        room.sendRaw(ImageBatch.EVENT_TYPE, content.toString()).getOrThrow()
     }
 
     private fun Result<Unit>.handleSendResult(mediaId: String) = this

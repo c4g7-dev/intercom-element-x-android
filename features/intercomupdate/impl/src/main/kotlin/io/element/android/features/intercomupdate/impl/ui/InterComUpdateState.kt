@@ -8,6 +8,7 @@
 package io.element.android.features.intercomupdate.impl.ui
 
 import io.element.android.features.intercomupdate.impl.data.UpdateSettings
+import io.element.android.features.intercomupdate.impl.install.InstallHint
 import io.element.android.features.intercomupdate.impl.logic.UpdateState
 
 data class InterComUpdateState(
@@ -19,5 +20,7 @@ data class InterComUpdateState(
     val isAllowedToInstall: Boolean,
     /** Whether a download would wait, because the connection is metered and mobile data is not allowed. */
     val isMetered: Boolean,
+    /** What the user can do about an installation that failed, when that is more than trying again. */
+    val installHint: InstallHint?,
     val eventSink: (InterComUpdateEvent) -> Unit,
 )

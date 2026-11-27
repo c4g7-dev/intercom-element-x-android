@@ -131,6 +131,7 @@ class PreferencesRootPresenter(
         }
 
         val isInterComUpdateAvailable by remember { interComUpdateIndicator.isUpdateAvailable }.collectAsState(initial = false)
+        val interComUpdateVersion by remember { interComUpdateIndicator.availableVersion }.collectAsState(initial = null)
 
         val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
         val hasAnalyticsProviders = remember { analyticsService.getAvailableAnalyticsProviders().isNotEmpty() }
@@ -175,6 +176,7 @@ class PreferencesRootPresenter(
             showLabsItem = showLabsItem,
             showLocationSettings = isLocationServiceAvailable,
             isInterComUpdateAvailable = isInterComUpdateAvailable,
+            interComUpdateVersion = interComUpdateVersion,
             snackbarMessage = snackbarMessage,
             eventSink = ::handleEvent,
         )

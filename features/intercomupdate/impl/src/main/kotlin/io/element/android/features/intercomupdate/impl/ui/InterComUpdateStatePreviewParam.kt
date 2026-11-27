@@ -10,7 +10,9 @@ package io.element.android.features.intercomupdate.impl.ui
 import android.content.pm.PackageInstaller
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.features.intercomupdate.impl.data.UpdateSettings
+import io.element.android.features.intercomupdate.impl.install.InstallHint
 import io.element.android.features.intercomupdate.impl.logic.ApkRejection
+import io.element.android.features.intercomupdate.impl.logic.ReleaseNote
 import io.element.android.features.intercomupdate.impl.logic.UpdateCandidate
 import io.element.android.features.intercomupdate.impl.logic.UpdateError
 import io.element.android.features.intercomupdate.impl.logic.UpdateState
@@ -32,6 +34,20 @@ open class InterComUpdateStatePreviewParam : PreviewParameterProvider<InterComUp
                 ),
             ),
             anInterComUpdateState(updateState = UpdateState.Failed(UpdateError.BadApk(ApkRejection.SignatureMismatch), anUpdateCandidate())),
+            anInterComUpdateState(
+                updateState = UpdateState.Failed(UpdateError.Install(PackageInstaller.STATUS_FAILURE_BLOCKED, null), anUpdateCandidate()),
+                installHint = InstallHint.SamsungAutoBlocker,
+            ),
+            anInterComUpdateState(
+                updateState = UpdateState.Available(
+                    anUpdateCandidate(
+                        notesHistory = listOf(
+                            ReleaseNote("26.11.1-intercom.5", 2_026_110_125, "- **Deafen** in calls.\n- Pictures sent together are one gallery."),
+                            ReleaseNote("26.11.1-intercom.4", 2_026_110_124, "- The app updates itself."),
+                        ),
+                    )
+                ),
+            ),
             anInterComUpdateState(isSupported = false),
             anInterComUpdateState(settings = UpdateSettings(autoInstall = false, allowMetered = true)),
         )
@@ -41,6 +57,7 @@ fun anUpdateCandidate(
     versionName: String = "26.11.1-intercom.5",
     versionCode: Long = 2_026_110_125,
     notes: String = "Calls reconnect faster after the network changes.",
+    notesHistory: List<ReleaseNote> = emptyList(),
 ) = UpdateCandidate(
     versionName = versionName,
     versionCode = versionCode,
@@ -49,6 +66,7 @@ fun anUpdateCandidate(
     apkSize = 130_000_000,
     sha256 = "0".repeat(64),
     notes = notes,
+    notesHistory = notesHistory,
 )
 
 fun anInterComUpdateState(
@@ -58,6 +76,7 @@ fun anInterComUpdateState(
     updateState: UpdateState = UpdateState.Idle,
     isAllowedToInstall: Boolean = true,
     isMetered: Boolean = false,
+    installHint: InstallHint? = null,
     eventSink: (InterComUpdateEvent) -> Unit = {},
 ) = InterComUpdateState(
     isSupported = isSupported,
@@ -66,5 +85,6 @@ fun anInterComUpdateState(
     updateState = updateState,
     isAllowedToInstall = isAllowedToInstall,
     isMetered = isMetered,
+    installHint = installHint,
     eventSink = eventSink,
 )

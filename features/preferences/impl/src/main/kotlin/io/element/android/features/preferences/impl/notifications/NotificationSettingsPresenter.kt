@@ -172,7 +172,12 @@ class NotificationSettingsPresenter(
         }
 
         val messageSoundDisplayName = probeSoundDisplayName(effectiveMessageSound, persistedMessageSoundTitle, defaultLabel)
-        val callRingtoneDisplayName = probeSoundDisplayName(effectiveCallRingtone, persistedCallRingtoneTitle, defaultLabel)
+        // InterCom: the bundled tone of the ringing channel is InterCom's own ringtone.
+        val callRingtoneDisplayName = if (effectiveCallRingtone == NotificationSound.ElementDefault) {
+            INTERCOM_RINGTONE_NAME
+        } else {
+            probeSoundDisplayName(effectiveCallRingtone, persistedCallRingtoneTitle, defaultLabel)
+        }
 
         var messageSoundCopyError by remember { mutableStateOf(false) }
         var callRingtoneCopyError by remember { mutableStateOf(false) }

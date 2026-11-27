@@ -10,6 +10,8 @@ package io.element.android.features.intercomupdate.impl.logic
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.intercomupdate.impl.data.Snooze
 import io.element.android.features.intercomupdate.impl.data.UpdateSettings
+import io.element.android.features.intercomupdate.impl.logic.FeedAnswer
+import io.element.android.features.intercomupdate.impl.logic.FeedMemory
 import io.element.android.features.intercomupdate.impl.ui.anUpdateCandidate
 import org.junit.Test
 
@@ -126,5 +128,83 @@ class UpdatePolicyTest {
         // And "Later" holds for all of these.
         val snooze = UpdatePolicy.snoozeFor(candidate.versionCode, now)
         assertThat(shouldPrompt(settings = auto, isAllowedToInstall = false, snooze = snooze)).isFalse()
+    }
+
+    @Test
+    fun `the feed is looked at once a minute at most, and not with the checks off`() {
+        val now = 100 * hour
+        assertThat(UpdatePolicy.shouldLookAtFeed(UpdateSettings(), now, 0)).isTrue()
+        assertThat(UpdatePolicy.shouldLookAtFeed(UpdateSettings(), now, now - minute + 1)).isFalse()
+        assertThat(UpdatePolicy.shouldLookAtFeed(UpdateSettings(), now, now - minute)).isTrue()
+        assertThat(UpdatePolicy.shouldLookAtFeed(UpdateSettings(), now, now + hour)).isTrue()
+        assertThat(UpdatePolicy.shouldLookAtFeed(UpdateSettings(checkAutomatically = false), now, 0)).isFalse()
+    }
+
+    private fun asks(
+        answer: FeedAnswer,
+        memory: FeedMemory = FeedMemory("etag", "a", false),
+        now: Long = 100 * hour,
+        lastCheck: Long = 100 * hour - 10 * minute,
+        lastAttempt: Long = lastCheck,
+        settings: UpdateSettings = UpdateSettings(),
+    ) = UpdatePolicy.shouldAskApi(answer, memory, settings, now, lastCheck, lastAttempt)
+
+    @Test
+    fun `an unchanged feed costs the API nothing, until six hours have passed`() {
+        assertThat(asks(FeedAnswer.NotModified)).isFalse()
+        assertThat(asks(FeedAnswer.Changed("etag2", "a", 0))).isFalse()
+        assertThat(asks(FeedAnswer.NotModified, lastCheck = 100 * hour - 6 * hour + 1)).isFalse()
+        assertThat(asks(FeedAnswer.NotModified, lastCheck = 100 * hour - 6 * hour)).isTrue()
+        assertThat(asks(FeedAnswer.NotModified, lastCheck = 0, lastAttempt = 0)).isTrue()
+    }
+
+    @Test
+    fun `a feed whose Android releases changed asks the API, but not twice within ninety seconds`() {
+        assertThat(asks(FeedAnswer.Changed("etag2", "b", 0))).isTrue()
+        assertThat(asks(FeedAnswer.Changed("etag2", "b", 0), lastCheck = 100 * hour - 89_000)).isFalse()
+        assertThat(asks(FeedAnswer.Changed("etag2", "b", 0), lastCheck = 100 * hour - 90_000)).isTrue()
+        assertThat(asks(FeedAnswer.Changed("etag2", "b", 0), settings = UpdateSettings(checkAutomatically = false))).isFalse()
+        // A first feed ever is a changed one.
+        assertThat(asks(FeedAnswer.Changed("etag", "a", 0), memory = FeedMemory())).isTrue()
+    }
+
+    @Test
+    fun `a release the API did not have yet is asked for once more`() {
+        val pending = FeedMemory("etag", "a", retryPending = true)
+        assertThat(asks(FeedAnswer.NotModified, memory = pending, lastCheck = 100 * hour - minute)).isFalse()
+        assertThat(asks(FeedAnswer.NotModified, memory = pending, lastCheck = 100 * hour - 2 * minute)).isTrue()
+    }
+
+    @Test
+    fun `after a request that failed the API is left alone for a quarter of an hour`() {
+        val lastCheck = 90 * hour
+        assertThat(asks(FeedAnswer.Changed("etag2", "b", 0), lastCheck = lastCheck, lastAttempt = 100 * hour - 14 * minute)).isFalse()
+        assertThat(asks(FeedAnswer.Changed("etag2", "b", 0), lastCheck = lastCheck, lastAttempt = 100 * hour - 15 * minute)).isTrue()
+    }
+
+    @Test
+    fun `without the feed the API is asked as before, every half hour`() {
+        assertThat(asks(FeedAnswer.Failed, lastCheck = 100 * hour - 29 * minute)).isFalse()
+        assertThat(asks(FeedAnswer.Failed, lastCheck = 100 * hour - 30 * minute)).isTrue()
+    }
+
+    @Test
+    fun `what is remembered of the feed after the API was asked`() {
+        val memory = FeedMemory("etag", "a", false)
+        val changed = FeedAnswer.Changed("etag2", "b", newestVersionCode = 200)
+        // Found: the feed is dealt with.
+        assertThat(UpdatePolicy.feedMemoryAfterCheck(changed, memory, foundNewer = true, currentVersionCode = 100))
+            .isEqualTo(FeedMemory("etag2", "b", false))
+        // The feed shows a newer release, the API none: once more.
+        assertThat(UpdatePolicy.feedMemoryAfterCheck(changed, memory, foundNewer = false, currentVersionCode = 100))
+            .isEqualTo(FeedMemory("etag2", "b", true))
+        // And after that once more, it is a release this app is not offered.
+        assertThat(UpdatePolicy.feedMemoryAfterCheck(changed, FeedMemory("etag2", "b", true), foundNewer = false, currentVersionCode = 100))
+            .isEqualTo(FeedMemory("etag2", "b", false))
+        assertThat(UpdatePolicy.feedMemoryAfterCheck(FeedAnswer.NotModified, FeedMemory("etag2", "b", true), false, 100))
+            .isEqualTo(FeedMemory("etag2", "b", false))
+        // Nothing newer in the feed either: nothing to ask again for.
+        assertThat(UpdatePolicy.feedMemoryAfterCheck(changed.copy(newestVersionCode = 100), memory, false, 100).retryPending).isFalse()
+        assertThat(UpdatePolicy.feedMemoryAfterCheck(FeedAnswer.Failed, memory, false, 100)).isEqualTo(memory)
     }
 }

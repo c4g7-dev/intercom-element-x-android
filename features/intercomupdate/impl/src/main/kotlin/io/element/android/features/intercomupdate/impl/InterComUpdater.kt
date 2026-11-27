@@ -22,8 +22,10 @@ interface InterComUpdater {
     suspend fun start()
 
     /**
-     * Every time the app comes to the screen: looks for a newer release, at most once in
-     * [io.element.android.features.intercomupdate.impl.logic.UpdatePolicy.OPEN_CHECK_INTERVAL], on any connection.
+     * Every time the app comes to the screen or the network returns, and every half hour while it stays there:
+     * looks at the releases feed, at most once in
+     * [io.element.android.features.intercomupdate.impl.logic.UpdatePolicy.FEED_LOOK_MIN_GAP], on any connection, and
+     * asks for the releases themselves only when the feed changed.
      */
     suspend fun onAppOpened()
 
@@ -50,6 +52,15 @@ interface InterComUpdater {
 
     /** The installer's answer: a `PackageInstaller.STATUS_*`, its message, and what to show the user if it asks. */
     fun onInstallStatus(status: Int, message: String?, confirmation: Intent?)
+
+    /**
+     * The user is back in the app some time after Android asked to confirm the update, and it is not installed:
+     * the update counts as not confirmed, and can be asked for again.
+     */
+    fun onConfirmationAbandoned()
+
+    /** "What's new" was seen. */
+    suspend fun dismissWhatsNew()
 
     /** The first sign of life of a new version. */
     fun onAppReplaced()

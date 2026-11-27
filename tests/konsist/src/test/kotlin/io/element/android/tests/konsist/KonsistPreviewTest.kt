@@ -146,6 +146,7 @@ class KonsistPreviewTest {
         "TextComposerEditPreview",
         "TextComposerFormattingNotEncryptedPreview",
         "TextComposerFormattingPreview",
+        "TextComposerLargeFontPreview",
         "TextComposerLinkDialogCreateLinkPreview",
         "TextComposerLinkDialogCreateLinkWithoutTextPreview",
         "TextComposerLinkDialogEditLinkPreview",

@@ -134,8 +134,9 @@ enum class FeatureFlags(
     SendGalleryMessages(
         key = "feature.send_gallery_messages",
         title = "Send gallery messages",
-        description = "Allow sending multiple media items in a single message.",
-        defaultValue = { false },
+        // InterCom: on by default. Several items are sent as a message each, pictures marked as one batch.
+        description = "Allow choosing several media items at once.",
+        defaultValue = { true },
         isFinished = false,
         isInLabs = true,
     ),

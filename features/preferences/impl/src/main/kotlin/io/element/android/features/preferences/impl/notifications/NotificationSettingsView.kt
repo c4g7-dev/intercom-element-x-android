@@ -449,10 +449,15 @@ private fun MessageSoundDialog(state: NotificationSettingsState) {
     )
 }
 
+/** InterCom: the name of its own ringtone. Not translated, like the app's other own strings. */
+internal const val INTERCOM_RINGTONE_NAME = "InterCom ringtone"
+
 @Composable
 private fun CallRingtoneDialog(state: NotificationSettingsState) {
     val initialSelection = when (state.callRingtone.sound) {
-        NotificationSound.SystemDefault -> 0
+        // InterCom: its own ringtone is the first choice.
+        NotificationSound.ElementDefault -> 0
+        NotificationSound.SystemDefault -> 1
         else -> null
     }
     val subtitle = if (initialSelection == null) {
@@ -467,13 +472,15 @@ private fun CallRingtoneDialog(state: NotificationSettingsState) {
         title = stringResource(id = R.string.screen_notification_settings_call_ringtone_label),
         subtitle = subtitle,
         options = persistentListOf(
+            ListOption(title = INTERCOM_RINGTONE_NAME),
             ListOption(title = stringResource(id = R.string.screen_notification_settings_sound_system_default)),
             ListOption(title = stringResource(id = R.string.screen_notification_settings_message_sound_dialog_choose_other)),
         ),
         initialSelection = initialSelection,
         onSelectOption = { index ->
             when (index) {
-                0 -> state.eventSink(NotificationSettingsEvent.SelectCallRingtonePreset(NotificationSound.SystemDefault))
+                0 -> state.eventSink(NotificationSettingsEvent.SelectCallRingtonePreset(NotificationSound.ElementDefault))
+                1 -> state.eventSink(NotificationSettingsEvent.SelectCallRingtonePreset(NotificationSound.SystemDefault))
                 else -> state.eventSink(NotificationSettingsEvent.LaunchCallRingtonePicker)
             }
         },

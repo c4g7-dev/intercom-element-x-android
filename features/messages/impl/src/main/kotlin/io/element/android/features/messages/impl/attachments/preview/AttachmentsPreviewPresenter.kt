@@ -538,10 +538,12 @@ class AttachmentsPreviewPresenter(
                 inReplyToEventId = inReplyToEventId,
             ).getOrThrow()
         } else {
-            mediaSender.sendGallery(
+            // InterCom: not one `m.gallery` message, which few clients show, but a message for each item, the
+            // pictures marked as one batch so that InterCom shows them as one gallery.
+            sendActionState.value = SendActionState.Sending.Uploading(mediaUploadInfos)
+            mediaSender.sendBatch(
                 mediaUploadInfos = mediaUploadInfos,
                 caption = caption,
-                formattedCaption = null,
                 inReplyToEventId = inReplyToEventId,
             ).getOrThrow()
         }

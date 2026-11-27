@@ -39,6 +39,7 @@ dependencies {
     implementation(libs.androidx.media3.effect)
     implementation(libs.androidx.media3.common)
     implementation(libs.coroutines.core)
+    implementation(libs.serialization.json)
     implementation(libs.vanniktech.blurhash)
 
     testCommonDependencies(libs)

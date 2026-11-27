@@ -43,6 +43,7 @@ dependencies {
     implementation(projects.libraries.dateformatter.api)
     implementation(projects.libraries.eventformatter.api)
     implementation(projects.libraries.indicator.api)
+    implementation(projects.features.intercomupdate.api)
     implementation(projects.libraries.deeplink.api)
     implementation(projects.libraries.fullscreenintent.api)
     implementation(projects.libraries.preferences.api)

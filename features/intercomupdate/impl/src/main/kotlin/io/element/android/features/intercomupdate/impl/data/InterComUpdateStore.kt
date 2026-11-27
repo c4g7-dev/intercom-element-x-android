@@ -15,7 +15,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
+import io.element.android.features.intercomupdate.impl.logic.FeedMemory
 import io.element.android.features.intercomupdate.impl.logic.UpdateCandidate
+import io.element.android.features.intercomupdate.impl.logic.WhatsNew
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.preferences.api.store.PreferenceDataStoreFactory
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +34,8 @@ data class UpdateSettings(
     val includePrereleases: Boolean = false,
     /** Download a release as soon as it is found and install it as soon as possible, without being asked. */
     val autoInstall: Boolean = true,
+    /** Show what is new once after an update. */
+    val showWhatsNew: Boolean = true,
 )
 
 /** "Later": the release with [versionCode] is not offered in a dialog before [untilMillis]. */
@@ -67,6 +71,25 @@ interface InterComUpdateStore {
     /** The version code that a notification has already announced. */
     suspend fun notifiedVersionCode(): Long
     suspend fun setNotifiedVersionCode(versionCode: Long)
+
+    /** The time the releases feed was last looked at, successful or not, or 0. */
+    suspend fun lastFeedLook(): Long
+    suspend fun setLastFeedLook(millis: Long)
+
+    suspend fun feedMemory(): FeedMemory
+    suspend fun setFeedMemory(memory: FeedMemory)
+
+    /** What to show once after an update, until it was seen. */
+    val whatsNew: Flow<WhatsNew?>
+    suspend fun setWhatsNew(whatsNew: WhatsNew?)
+
+    /** The version code of the app when it last ran, or 0: what tells an update from a first installation. */
+    suspend fun lastRunVersionCode(): Long
+    suspend fun setLastRunVersionCode(versionCode: Long)
+
+    /** Not 0 after an update whose notes are not known yet: the version code it came from. */
+    suspend fun whatsNewSince(): Long
+    suspend fun setWhatsNewSince(versionCode: Long)
 }
 
 @ContributesBinding(AppScope::class)
@@ -84,6 +107,7 @@ class DefaultInterComUpdateStore(
         allowMetered = this[allowMeteredKey] ?: false,
         includePrereleases = this[includePrereleasesKey] ?: false,
         autoInstall = this[autoInstallKey] ?: true,
+        showWhatsNew = this[showWhatsNewKey] ?: true,
     )
 
     override suspend fun setSettings(transform: (UpdateSettings) -> UpdateSettings) {
@@ -93,6 +117,7 @@ class DefaultInterComUpdateStore(
             prefs[allowMeteredKey] = new.allowMetered
             prefs[includePrereleasesKey] = new.includePrereleases
             prefs[autoInstallKey] = new.autoInstall
+            prefs[showWhatsNewKey] = new.showWhatsNew
         }
     }
 
@@ -140,7 +165,56 @@ class DefaultInterComUpdateStore(
         store.edit { it[notifiedKey] = versionCode }
     }
 
+    override suspend fun lastFeedLook(): Long = store.data.first()[lastFeedLookKey] ?: 0
+
+    override suspend fun setLastFeedLook(millis: Long) {
+        store.edit { it[lastFeedLookKey] = millis }
+    }
+
+    override suspend fun feedMemory(): FeedMemory {
+        val prefs = store.data.first()
+        return FeedMemory(prefs[feedEtagKey], prefs[feedFingerprintKey], prefs[feedRetryKey] ?: false)
+    }
+
+    override suspend fun setFeedMemory(memory: FeedMemory) {
+        store.edit { prefs ->
+            if (memory.etag == null) prefs.remove(feedEtagKey) else prefs[feedEtagKey] = memory.etag
+            if (memory.fingerprint == null) prefs.remove(feedFingerprintKey) else prefs[feedFingerprintKey] = memory.fingerprint
+            prefs[feedRetryKey] = memory.retryPending
+        }
+    }
+
+    override val whatsNew: Flow<WhatsNew?> = store.data.map { prefs ->
+        prefs[whatsNewKey]?.let { text -> runCatchingExceptions { json.decodeFromString<WhatsNew>(text) }.getOrNull() }
+    }
+
+    override suspend fun setWhatsNew(whatsNew: WhatsNew?) {
+        store.edit { prefs ->
+            if (whatsNew == null) prefs.remove(whatsNewKey) else prefs[whatsNewKey] = json.encodeToString(whatsNew)
+        }
+    }
+
+    override suspend fun lastRunVersionCode(): Long = store.data.first()[lastRunKey] ?: 0
+
+    override suspend fun setLastRunVersionCode(versionCode: Long) {
+        store.edit { it[lastRunKey] = versionCode }
+    }
+
+    override suspend fun whatsNewSince(): Long = store.data.first()[whatsNewSinceKey] ?: 0
+
+    override suspend fun setWhatsNewSince(versionCode: Long) {
+        store.edit { it[whatsNewSinceKey] = versionCode }
+    }
+
     private companion object {
+        val showWhatsNewKey = booleanPreferencesKey("show_whats_new")
+        val lastFeedLookKey = longPreferencesKey("last_feed_look")
+        val feedEtagKey = stringPreferencesKey("feed_etag")
+        val feedFingerprintKey = stringPreferencesKey("feed_fingerprint")
+        val feedRetryKey = booleanPreferencesKey("feed_retry_pending")
+        val whatsNewKey = stringPreferencesKey("whats_new")
+        val lastRunKey = longPreferencesKey("last_run_version_code")
+        val whatsNewSinceKey = longPreferencesKey("whats_new_since")
         val checkAutomaticallyKey = booleanPreferencesKey("check_automatically")
         val allowMeteredKey = booleanPreferencesKey("allow_metered")
         val includePrereleasesKey = booleanPreferencesKey("include_prereleases")

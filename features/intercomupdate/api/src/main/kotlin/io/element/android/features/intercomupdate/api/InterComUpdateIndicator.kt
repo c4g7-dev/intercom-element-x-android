@@ -9,7 +9,13 @@ package io.element.android.features.intercomupdate.api
 
 import kotlinx.coroutines.flow.Flow
 
-/** InterCom: whether a newer release than the running one is known, for the dot in the settings. */
+/**
+ * InterCom: whether a newer release than the running one is known, for the dot on the way to the settings and the
+ * row at their top.
+ */
 interface InterComUpdateIndicator {
     val isUpdateAvailable: Flow<Boolean>
+
+    /** The version name of that release, or null. */
+    val availableVersion: Flow<String?>
 }

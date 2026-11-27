@@ -406,6 +406,7 @@ class PreferencesRootPresenterTest {
         preferencesAccountPresenter = { aPreferencesAccountState() },
         interComUpdateIndicator = object : InterComUpdateIndicator {
             override val isUpdateAvailable = flowOf(false)
+            override val availableVersion = flowOf<String?>(null)
         },
         sessionCoroutineScope = this,
     )

@@ -112,6 +112,27 @@ class ReleaseSelectorTest {
             ReleaseSelector.toCandidate(selected, null, "$A_SHA256  another-file.apk\n", PACKAGE, 2_026_110_123)
         }
     }
+
+    @Test
+    fun `the notes of an update are those of every release it skips, newest first`() {
+        val releases = listOf(
+            anAndroidRelease("26.11.1-intercom.5").copy(body = "five"),
+            aRelease("v1.12.35-intercom.14").copy(body = "desktop"),
+            anAndroidRelease("26.11.1-intercom.14").copy(body = "fourteen"),
+            anAndroidRelease("26.11.1-intercom.7").copy(body = "seven"),
+            anAndroidRelease("26.11.1-intercom.9", prerelease = true).copy(body = "nine, a pre-release"),
+            anAndroidRelease("26.11.1-intercom.8", draft = true).copy(body = "a draft"),
+            anAndroidRelease("26.11.1-intercom.6").copy(body = "  "),
+            anAndroidRelease("26.11.2-intercom.1").copy(body = "newer than the update"),
+        )
+        val notes = ReleaseSelector.notes(releases, afterVersionCode = 2_026_110_125, upToVersionCode = 2_026_110_134, includePrereleases = false)
+        assertThat(notes).containsExactly(
+            ReleaseNote("26.11.1-intercom.14", 2_026_110_134, "fourteen"),
+            ReleaseNote("26.11.1-intercom.7", 2_026_110_127, "seven"),
+        ).inOrder()
+        val withPrereleases = ReleaseSelector.notes(releases, 2_026_110_125, 2_026_110_134, includePrereleases = true)
+        assertThat(withPrereleases.map { it.versionName }).containsExactly("26.11.1-intercom.14", "26.11.1-intercom.9", "26.11.1-intercom.7").inOrder()
+    }
 }
 
 const val PACKAGE = "com.c4g7.intercom.android"

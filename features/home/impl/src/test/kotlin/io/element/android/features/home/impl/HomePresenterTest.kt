@@ -17,6 +17,7 @@ import io.element.android.features.announcement.test.FakeAnnouncementService
 import io.element.android.features.home.impl.roomlist.aRoomListState
 import io.element.android.features.home.impl.spaces.HomeSpacesState
 import io.element.android.features.home.impl.spaces.aHomeSpacesState
+import io.element.android.features.intercomupdate.api.InterComUpdateIndicator
 import io.element.android.features.rageshake.api.RageshakeFeatureAvailability
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
@@ -43,7 +44,10 @@ import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.test
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -304,6 +308,23 @@ class HomePresenterTest {
             assertThat(awaitItem().totalUnreadCount).isEqualTo(5)
         }
     }
+
+    @Test
+    fun `present - the avatar has its dot while an InterCom update is known`() = runTest {
+        val indicator = FakeInterComUpdateIndicator()
+        val presenter = createHomePresenter(interComUpdateIndicator = indicator)
+        presenter.test {
+            suspend fun awaitIndicator(shown: Boolean) {
+                while (awaitItem().showAvatarIndicator != shown) Unit
+            }
+            awaitIndicator(false)
+            indicator.version.value = "26.11.1-intercom.14"
+            awaitIndicator(true)
+            indicator.version.value = null
+            awaitIndicator(false)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }
 
 internal fun TestScope.createHomePresenter(
@@ -312,6 +333,7 @@ internal fun TestScope.createHomePresenter(
     snackbarDispatcher: SnackbarDispatcher = SnackbarDispatcher(),
     rageshakeFeatureAvailability: RageshakeFeatureAvailability = RageshakeFeatureAvailability { flowOf(false) },
     indicatorService: IndicatorService = FakeIndicatorService(),
+    interComUpdateIndicator: InterComUpdateIndicator = FakeInterComUpdateIndicator(),
     homeSpacesPresenter: Presenter<HomeSpacesState> = Presenter { aHomeSpacesState() },
     sessionStore: SessionStore = InMemorySessionStore(),
     announcementService: AnnouncementService = FakeAnnouncementService(),
@@ -322,6 +344,7 @@ internal fun TestScope.createHomePresenter(
     syncService = syncService,
     snackbarDispatcher = snackbarDispatcher,
     indicatorService = indicatorService,
+    interComUpdateIndicator = interComUpdateIndicator,
     roomListPresenter = { aRoomListState() },
     homeSpacesPresenter = homeSpacesPresenter,
     rageshakeFeatureAvailability = rageshakeFeatureAvailability,
@@ -330,3 +353,9 @@ internal fun TestScope.createHomePresenter(
     featureFlagService = featureFlagService,
     appCoroutineScope = appCoroutineScope,
 )
+
+internal class FakeInterComUpdateIndicator(version: String? = null) : InterComUpdateIndicator {
+    val version = MutableStateFlow(version)
+    override val availableVersion: Flow<String?> = this.version
+    override val isUpdateAvailable: Flow<Boolean> = this.version.map { it != null }
+}

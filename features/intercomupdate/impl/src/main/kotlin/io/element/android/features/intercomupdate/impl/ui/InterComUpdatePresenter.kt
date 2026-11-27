@@ -16,10 +16,13 @@ import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
 import io.element.android.features.intercomupdate.impl.CheckTrigger
 import io.element.android.features.intercomupdate.impl.InterComUpdater
+import io.element.android.features.intercomupdate.impl.data.DeviceInfo
 import io.element.android.features.intercomupdate.impl.data.InterComUpdateStore
 import io.element.android.features.intercomupdate.impl.data.NetworkMeter
 import io.element.android.features.intercomupdate.impl.data.UpdateSettings
 import io.element.android.features.intercomupdate.impl.install.ApkInstaller
+import io.element.android.features.intercomupdate.impl.install.InstallHint
+import io.element.android.features.intercomupdate.impl.logic.UpdateState
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.di.annotations.AppCoroutineScope
@@ -33,6 +36,7 @@ class InterComUpdatePresenter(
     private val installer: ApkInstaller,
     private val networkMeter: NetworkMeter,
     private val buildMeta: BuildMeta,
+    private val deviceInfo: DeviceInfo,
     // A check or a change of the settings is finished even when the screen is left meanwhile.
     @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
 ) : Presenter<InterComUpdateState> {
@@ -54,6 +58,7 @@ class InterComUpdatePresenter(
                 is InterComUpdateEvent.SetAllowMetered -> changeSettings { it.copy(allowMetered = event.enabled) }
                 is InterComUpdateEvent.SetAutoInstall -> changeSettings { it.copy(autoInstall = event.enabled) }
                 is InterComUpdateEvent.SetIncludePrereleases -> changeSettings { it.copy(includePrereleases = event.enabled) }
+                is InterComUpdateEvent.SetShowWhatsNew -> changeSettings { it.copy(showWhatsNew = event.enabled) }
                 InterComUpdateEvent.CheckNow -> {
                     isMetered = networkMeter.isMetered()
                     appCoroutineScope.launch { updater.check(CheckTrigger.Manual) }
@@ -76,6 +81,7 @@ class InterComUpdatePresenter(
             updateState = updateState,
             isAllowedToInstall = isAllowedToInstall,
             isMetered = isMetered,
+            installHint = (updateState as? UpdateState.Failed)?.let { InstallHint.of(it.error, deviceInfo.manufacturer) },
             eventSink = ::handleEvent,
         )
     }

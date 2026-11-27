@@ -128,6 +128,17 @@ interface MediaSender {
         inReplyToEventId: EventId?,
     ): Result<Unit>
 
+    /**
+     * InterCom: sends several already pre-processed media items chosen together, each as a message of its own
+     * that every client shows. Pictures are marked as one batch (`io.intercom.gallery`), so that InterCom shows
+     * them as one gallery; the [caption] goes with the first item.
+     */
+    suspend fun sendBatch(
+        mediaUploadInfos: List<MediaUploadInfo>,
+        caption: String?,
+        inReplyToEventId: EventId?,
+    ): Result<Unit>
+
     /** Deletes the temporary files produced by pre-processing; must be called even when nothing was ultimately sent. */
     fun cleanUp()
 }

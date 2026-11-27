@@ -28,6 +28,9 @@ sealed interface UpdateError {
 
     /** The system's installer refused or failed; [status] is `PackageInstaller.STATUS_*`. */
     data class Install(val status: Int, val detail: String?) : UpdateError
+
+    /** Android asked the user to confirm, and the user came back without the update being installed. */
+    data object NotConfirmed : UpdateError
 }
 
 sealed interface UpdateState {

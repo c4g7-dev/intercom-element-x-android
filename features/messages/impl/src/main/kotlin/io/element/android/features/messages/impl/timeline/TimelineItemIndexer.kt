@@ -9,6 +9,7 @@
 package io.element.android.features.messages.impl.timeline
 
 import dev.zacsweers.metro.Inject
+import io.element.android.features.messages.impl.timeline.groups.foldedEventIds
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.UniqueId
@@ -76,6 +77,8 @@ class TimelineItemIndexer {
     }
 
     private fun processEvent(event: TimelineItem.Event, index: Int) {
+        // InterCom: a gallery made of several picture messages is where each of them is.
+        event.foldedEventIds().forEach { timelineEventsIndexes[it] = index }
         if (event.eventId == null) return
         timelineEventsIndexes[event.eventId] = index
     }

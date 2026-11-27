@@ -486,13 +486,45 @@ class NotificationChannelsTest : RobolectricTest() {
         assertThat(result).isEqualTo(NotificationSound.Custom(customUri.toString()))
     }
 
+    @Test
+    @Config(sdk = [Build.VERSION_CODES.TIRAMISU])
+    fun `init - an untouched call ringtone becomes InterCom's own ringtone, once`() = runTest {
+        val captured = mutableListOf<NotificationChannelCompat>()
+        val notificationManager = mockk<NotificationManagerCompat>(relaxed = true) {
+            every { notificationChannels } returns emptyList()
+            every { createNotificationChannel(capture(captured)) } returns Unit
+        }
+        val store = InMemoryAppPreferencesStore(messageSound = NotificationSound.ElementDefault)
+
+        val channels = createNotificationChannels(notificationManager = notificationManager, appPreferencesStore = store)
+
+        val config = store.getNotificationSoundChannelConfig()
+        assertThat(config.callRingtone).isEqualTo(NotificationSound.ElementDefault)
+        assertThat(config.callRingtoneVersion).isEqualTo(1)
+        val ringingId = "${RINGING_CALL_NOTIFICATION_CHANNEL_ID_BASE}_v1"
+        assertThat(channels.getChannelForIncomingCall(ring = true)).isEqualTo(ringingId)
+        val sound = captured.single { it.id == ringingId }.sound
+        assertThat(sound.toString()).startsWith("android.resource://")
+        assertThat(sound).isNotEqualTo(Settings.System.DEFAULT_RINGTONE_URI)
+
+        // "System default", chosen afterwards, stays chosen.
+        store.setCallRingtoneAndIncrementVersion(NotificationSound.SystemDefault, title = null)
+        createNotificationChannels(notificationManager = notificationManager, appPreferencesStore = store)
+        assertThat(store.getNotificationSoundChannelConfig().callRingtone).isEqualTo(NotificationSound.SystemDefault)
+        assertThat(store.getNotificationSoundChannelConfig().callRingtoneVersion).isEqualTo(2)
+    }
+
     private fun createNotificationChannels(
         notificationManager: NotificationManagerCompat = mockk(relaxed = true),
         enterpriseService: EnterpriseService = FakeEnterpriseService(),
         // Default to ElementDefault so the legacy `(SystemDefault, version=0)` migration gate
         // doesn't fire and silently rewrite the prefs store. Tests that exercise the migration
         // construct their own store explicitly.
-        appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore(messageSound = NotificationSound.ElementDefault),
+        // InterCom: the same holds for the ringtone, whose untouched state becomes InterCom's own ringtone.
+        appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore(
+            messageSound = NotificationSound.ElementDefault,
+            callRingtone = NotificationSound.ElementDefault,
+        ),
     ) = DefaultNotificationChannels(
         notificationManager = notificationManager,
         stringProvider = FakeStringProvider(),

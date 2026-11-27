@@ -13,7 +13,10 @@ import io.element.android.features.intercomupdate.impl.data.UpdateSettings
 import io.element.android.features.intercomupdate.impl.logic.A_SHA256
 import io.element.android.features.intercomupdate.impl.logic.ApkInfo
 import io.element.android.features.intercomupdate.impl.logic.ApkRejection
+import io.element.android.features.intercomupdate.impl.logic.FeedAnswer
+import io.element.android.features.intercomupdate.impl.logic.FeedMemory
 import io.element.android.features.intercomupdate.impl.logic.PACKAGE
+import io.element.android.features.intercomupdate.impl.logic.ReleaseNote
 import io.element.android.features.intercomupdate.impl.logic.ReleaseSelector
 import io.element.android.features.intercomupdate.impl.logic.UpdateError
 import io.element.android.features.intercomupdate.impl.logic.UpdateState
@@ -74,6 +77,7 @@ class DefaultInterComUpdaterTest {
             notifier = notifier,
             scheduler = scheduler,
             callMonitor = { isInCall },
+            deviceInfo = FakeDeviceInfo(),
             clock = clock,
             dispatchers = testCoroutineDispatchers(),
             coroutineScope = backgroundScope,
@@ -454,6 +458,183 @@ class DefaultInterComUpdaterTest {
         assertThat(updater.state.value).isEqualTo(UpdateState.Idle)
         assertThat(scheduler.events).isEmpty()
         assertThat(source.downloads).isEqualTo(0)
+    }
+
+    @Test
+    fun `the feed is asked first, and the API only when its Android releases changed`() = runTest {
+        source.feedAnswer = FeedAnswer.Changed("etag-1", "26.11.1-intercom.4@t1", 2_026_110_124)
+        val updater = createUpdater()
+        updater.onAppOpened()
+        assertThat(updater.state.value).isInstanceOf(UpdateState.Available::class.java)
+        assertThat(source.releaseRequests).isEqualTo(1)
+        assertThat(store.feedMemory).isEqualTo(FeedMemory("etag-1", "26.11.1-intercom.4@t1", false))
+
+        // Within a minute nothing is asked at all.
+        clock.epochMillisResult += 30_000
+        updater.onAppOpened()
+        assertThat(source.feedRequests).isEqualTo(1)
+
+        // Later the feed is asked with the ETag, and unchanged it costs the API nothing, however often.
+        source.feedAnswer = FeedAnswer.NotModified
+        repeat(20) {
+            clock.epochMillisResult += 5 * 60_000
+            updater.onAppOpened()
+        }
+        assertThat(source.feedRequests).isEqualTo(21)
+        assertThat(source.feedEtags.last()).isEqualTo("etag-1")
+        assertThat(source.releaseRequests).isEqualTo(1)
+
+        // A desktop release changes the feed's ETag but not its Android releases: still nothing for the API.
+        source.feedAnswer = FeedAnswer.Changed("etag-2", "26.11.1-intercom.4@t1", 2_026_110_124)
+        clock.epochMillisResult += 5 * 60_000
+        updater.onAppOpened()
+        assertThat(source.releaseRequests).isEqualTo(1)
+        assertThat(store.feedMemory.etag).isEqualTo("etag-2")
+
+        // A new Android release does.
+        source.feedAnswer = FeedAnswer.Changed("etag-3", "26.11.1-intercom.5@t2,26.11.1-intercom.4@t1", 2_026_110_125)
+        clock.epochMillisResult += 5 * 60_000
+        updater.onAppOpened()
+        assertThat(source.releaseRequests).isEqualTo(2)
+        assertThat(store.feedMemory.fingerprint).startsWith("26.11.1-intercom.5")
+    }
+
+    @Test
+    fun `an unchanged feed still asks the API every six hours`() = runTest {
+        source.feedAnswer = FeedAnswer.Changed("etag-1", "26.11.1-intercom.4@t1", 2_026_110_124)
+        val updater = createUpdater()
+        updater.onAppOpened()
+        source.feedAnswer = FeedAnswer.NotModified
+        clock.epochMillisResult += 6 * 3_600_000 - 1000
+        updater.onAppOpened()
+        assertThat(source.releaseRequests).isEqualTo(1)
+        clock.epochMillisResult += 61_000
+        updater.onAppOpened()
+        assertThat(source.releaseRequests).isEqualTo(2)
+    }
+
+    @Test
+    fun `a release in the feed that the API does not have yet is asked for once more, and then let be`() = runTest {
+        source.releases = listOf(anAndroidRelease("26.11.1-intercom.3"))
+        source.feedAnswer = FeedAnswer.Changed("etag-1", "26.11.1-intercom.4@t1", 2_026_110_124)
+        val updater = createUpdater()
+        updater.onAppOpened()
+        assertThat(updater.state.value).isEqualTo(UpdateState.UpToDate)
+        assertThat(store.feedMemory.retryPending).isTrue()
+
+        source.feedAnswer = FeedAnswer.NotModified
+        clock.epochMillisResult += 61_000
+        updater.onAppOpened()
+        assertThat(source.releaseRequests).isEqualTo(1)
+        clock.epochMillisResult += 61_000
+        updater.onAppOpened()
+        assertThat(source.releaseRequests).isEqualTo(2)
+        assertThat(store.feedMemory.retryPending).isFalse()
+        repeat(5) {
+            clock.epochMillisResult += 5 * 60_000
+            updater.onAppOpened()
+        }
+        assertThat(source.releaseRequests).isEqualTo(2)
+    }
+
+    @Test
+    fun `a failed request leaves the feed to be dealt with again`() = runTest {
+        source.feedAnswer = FeedAnswer.Changed("etag-1", "26.11.1-intercom.4@t1", 2_026_110_124)
+        source.failure = IOException("HTTP 403")
+        val updater = createUpdater()
+        updater.onAppOpened()
+        assertThat(store.feedMemory).isEqualTo(FeedMemory())
+        source.failure = null
+        clock.epochMillisResult += 5 * 60_000
+        updater.onAppOpened()
+        assertThat(source.releaseRequests).isEqualTo(1)
+        clock.epochMillisResult += 10 * 60_000
+        updater.onAppOpened()
+        assertThat(source.releaseRequests).isEqualTo(2)
+        assertThat(updater.state.value).isInstanceOf(UpdateState.Available::class.java)
+    }
+
+    @Test
+    fun `a found release carries the notes of the releases it skips`() = runTest {
+        reader.installed = ApkInfo(PACKAGE, 2_026_110_122, setOf("release-key"))
+        val updater = createUpdater()
+        updater.check(CheckTrigger.Manual)
+        val candidate = updater.state.value.candidate!!
+        assertThat(candidate.notesHistory.map { it.versionName }).containsExactly(NEW, "26.11.1-intercom.3").inOrder()
+        assertThat(candidate.notes).isEqualTo("Notes")
+    }
+
+    @Test
+    fun `after an update the notes of the installed release are kept to be shown once`() = runTest {
+        // The release that was on offer now runs.
+        reader.installed = ApkInfo(PACKAGE, 2_026_110_124, setOf("release-key"))
+        store.lastRunVersionCode = 2_026_110_123
+        store.candidate = anUpdateCandidate(
+            versionName = NEW,
+            versionCode = 2_026_110_124,
+            notesHistory = listOf(ReleaseNote(NEW, 2_026_110_124, "four"), ReleaseNote("26.11.1-intercom.2", 2_026_110_122, "two")),
+        )
+        val updater = createUpdater()
+        updater.onAppReplaced()
+        runCurrent()
+        updater.start()
+        val whatsNew = store.whatsNew.value!!
+        assertThat(whatsNew.versionCode).isEqualTo(2_026_110_124L)
+        assertThat(whatsNew.notes).containsExactly(ReleaseNote(NEW, 2_026_110_124, "four"))
+        assertThat(store.candidate).isNull()
+        assertThat(store.lastRunVersionCode).isEqualTo(2_026_110_124L)
+
+        updater.dismissWhatsNew()
+        assertThat(store.whatsNew.value).isNull()
+        // The next start is an ordinary one.
+        updater.start()
+        assertThat(store.whatsNew.value).isNull()
+    }
+
+    @Test
+    fun `an update from a version that did not record what ran shows the stored release's notes`() = runTest {
+        reader.installed = ApkInfo(PACKAGE, 2_026_110_124, setOf("release-key"))
+        store.candidate = anUpdateCandidate(versionName = NEW, versionCode = 2_026_110_124, notes = "Plain notes")
+        val updater = createUpdater()
+        updater.start()
+        assertThat(store.whatsNew.value!!.notes).containsExactly(ReleaseNote(NEW, 2_026_110_124, "Plain notes"))
+    }
+
+    @Test
+    fun `a first installation shows nothing, and an update installed by hand takes its notes from the next check`() = runTest {
+        val updater = createUpdater()
+        updater.start()
+        assertThat(store.whatsNew.value).isNull()
+        assertThat(store.lastRunVersionCode).isEqualTo(2_026_110_123L)
+
+        // Installed by hand: nothing was on offer.
+        reader.installed = ApkInfo(PACKAGE, 2_026_110_124, setOf("release-key"))
+        updater.start()
+        assertThat(store.whatsNew.value).isNull()
+        assertThat(store.whatsNewSince).isEqualTo(2_026_110_123L)
+        updater.check(CheckTrigger.Manual)
+        assertThat(store.whatsNew.value!!.notes.map { it.versionName }).containsExactly(NEW)
+        assertThat(store.whatsNewSince).isEqualTo(0)
+    }
+
+    @Test
+    fun `coming back from a confirmation that was never given fails the update and keeps the release`() = runTest {
+        val updater = createUpdater()
+        updater.check(CheckTrigger.Manual)
+        updater.onConfirmationAbandoned()
+        assertThat(updater.state.value).isInstanceOf(UpdateState.Available::class.java)
+
+        updater.downloadAndInstall(userInitiated = true)
+        updater.onInstallStatus(PackageInstaller.STATUS_PENDING_USER_ACTION, null, null)
+        assertThat(updater.state.value).isInstanceOf(UpdateState.AwaitingConfirmation::class.java)
+        updater.onConfirmationAbandoned()
+        val failed = updater.state.value as UpdateState.Failed
+        assertThat(failed.error).isEqualTo(UpdateError.NotConfirmed)
+        assertThat(failed.candidate!!.versionName).isEqualTo(NEW)
+        // It can be asked for again.
+        updater.requestUpdate()
+        runCurrent()
+        assertThat(scheduler.events).contains("update asked")
     }
 
     private fun manifestJson(packageName: String = PACKAGE) = """
